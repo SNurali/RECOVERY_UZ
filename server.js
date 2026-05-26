@@ -443,7 +443,33 @@ app.get('/v1/orders/track/:token', (req, res) => {
 
 // Guest order creation (no auth required)
 app.post('/v1/guest/orders', (req, res) => {
-  const { client_name, phone, equipment_id, issue_id, notes } = req.body;
+  const { client_name, phone, telegram: clientTelegram, equipment_id, issue_id, notes } = req.body;
+  
+  if (!client_name || !phone) {
+    return res.status(400).json({ message: 'Имя и телефон обязательны' });
+  }
+  
+  // Find or create guest client
+  let guestClient = users.find(u => u.phone === phone && u.role === 'client');
+  if (!guestClient) {
+    guestClient = {
+      id: String(users.length + 1),
+      login: phone,
+      password: 'guest123',
+      role: 'client',
+      full_name: client_name || 'Гость',
+      phone: phone || '',
+      email: null,
+      telegram: clientTelegram || null,
+      telegram_chat_id: null
+    };
+    users.push(guestClient);
+  } else {
+    // Update name and telegram if provided
+    if (client_name) guestClient.full_name = client_name;
+    if (clientTelegram) guestClient.telegram = clientTelegram;
+  }
+  
   const newOrder = {
     id: 'ord' + (orders.length + 1),
     order_date: new Date().toISOString(),
@@ -452,9 +478,9 @@ app.post('/v1/guest/orders', (req, res) => {
     price_rejected_at: null,
     total_price_uzs: 0,
     total_paid_uzs: 0,
-    client: null,
-    guest_name: client_name || 'Гостевой клиент',
-    guest_phone: phone || '',
+    client: guestClient,
+    guest_name: client_name,
+    guest_phone: phone,
     details: [{
       id: 'det_' + Date.now(),
       serial_number: '',
@@ -467,6 +493,16 @@ app.post('/v1/guest/orders', (req, res) => {
     }]
   };
   orders.push(newOrder);
+  
+  // Telegram notification to admin group
+  telegram.notifyNewOrder(newOrder);
+  
+  // If client has telegram_chat_id, notify them directly
+  if (guestClient.telegram_chat_id) {
+    const shortId = newOrder.id.slice(0, 8).toUpperCase();
+    telegram.notifyClientStatusChange(guestClient.telegram_chat_id, newOrder, 'new');
+  }
+  
   res.status(201).json({ data: newOrder });
 });
 

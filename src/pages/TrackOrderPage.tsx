@@ -23,7 +23,7 @@ const STATUS_LABELS: Record<string, { label: string; description: string }> = {
 export default function TrackOrderPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t, language } = useI18n();
+  const { language } = useI18n();
   
   const [token, setToken] = useState('');
   const [order, setOrder] = useState<any>(null);

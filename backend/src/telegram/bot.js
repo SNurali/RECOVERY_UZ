@@ -313,10 +313,43 @@ async function handleWebhook(update, findOrderById, findClientById, saveClient) 
   return { ok: true };
 }
 
+async function notifyGuestNewOrder(order) {
+  if (!isConfigured()) return;
+
+  const shortId = order.id.slice(0, 8).toUpperCase();
+  const clientName = order.client?.full_name || order.guest_name || 'Гость';
+  const clientPhone = order.client?.phone || order.guest_phone || 'Не указан';
+  const clientTelegram = order.client?.telegram || '';
+  const details = order.details || [];
+
+  let detailsText = '';
+  for (const d of details) {
+    detailsText += `\n  • ${d.equipment?.name_rus || 'Оборудование'} — ${d.issue?.name_rus || 'Неисправность'}`;
+    if (d.notes) detailsText += `\n    📝 ${d.notes}`;
+  }
+
+  const text = `
+🆕 <b>НОВЫЙ ЗАКАЗ (гость)</b> #${shortId}
+
+👤 <b>Клиент:</b> ${clientName}
+📱 <b>Телефон:</b> ${clientPhone}
+${clientTelegram ? `💬 <b>Telegram:</b> @${clientTelegram.replace('@', '')}` : ''}
+
+📦 <b>Оборудование:</b>${detailsText || '\n  Не указано'}
+
+📅 <b>Дата:</b> ${new Date().toLocaleString('ru-RU')}
+
+⚠️ <b>Требуется назначение мастера!</b>
+`.trim();
+
+  await sendMessage(text);
+}
+
 export {
   sendMessage,
   isConfigured,
   notifyNewOrder,
+  notifyGuestNewOrder,
   notifyStatusChange,
   notifyPriceSet,
   notifyPriceApproved,

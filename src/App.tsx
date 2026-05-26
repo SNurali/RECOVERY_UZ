@@ -10,6 +10,7 @@ import { ClientLayout } from './layouts/ClientLayout';
 const GuestView = lazy(() => import('./components/GuestView'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage'));
+const GuestOrderPage = lazy(() => import('./pages/GuestOrderPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
 // Staff pages - lazy load
@@ -109,6 +110,7 @@ const AppRoutes = () => {
       } />
 
       <Route path="/track" element={<TrackOrderPage />} />
+      <Route path="/guest/new-order" element={<Suspense fallback={<PageLoader />}><GuestOrderPage /></Suspense>} />
 
       {/* Staff Routes */}
       <Route 

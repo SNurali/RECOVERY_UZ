@@ -11,6 +11,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
 
+  // t is available for future i18n use
+  void t;
+
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',

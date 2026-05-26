@@ -83,7 +83,7 @@ export default function GuestView() {
         >
           {/* Create Order Card */}
           <div
-            onClick={() => navigate('/login?action=create')}
+            onClick={() => navigate('/guest/new-order')}
             style={{ background: 'rgba(30,41,59,0.5)', backdropFilter: 'blur(16px)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '20px', padding: '2rem', cursor: 'pointer', transition: 'all 0.3s', position: 'relative', overflow: 'hidden' }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(14,165,233,0.15)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(14,165,233,0.2)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
