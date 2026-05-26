@@ -169,7 +169,6 @@ export default function Users() {
       key: 'actions',
       title: '',
       render: (item: any) => {
-        const role = item.role?.name_eng || item.role;
         const isSelf = item.id === currentUser?.id;
         if (isSelf) return null;
         return (
