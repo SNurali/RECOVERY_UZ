@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Send, CheckCircle, HardDrive, AlertTriangle, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Send, CheckCircle, HardDrive, MessageCircle } from 'lucide-react';
 import { useI18n } from '../i18n/provider';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import api from '../lib/api';
@@ -11,7 +11,7 @@ const STEPS = ['equipment', 'issue', 'contact', 'review'];
 
 export default function GuestOrderPage() {
   const navigate = useNavigate();
-  const { t, language } = useI18n();
+  const { language } = useI18n();
 
   const [step, setStep] = useState(0);
   const [equipments, setEquipments] = useState<any[]>([]);
