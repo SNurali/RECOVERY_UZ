@@ -3,33 +3,36 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, HardDrive, XCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/provider';
+import type { Language } from '../i18n/provider';
 import api from '../lib/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const STATUS_ORDER = ['new', 'accepted', 'diagnosing', 'awaiting_approval', 'approved', 'in_repair', 'completed', 'issued'];
 
-const STATUS_LABELS: Record<string, { label: string; description: string }> = {
-  new: { label: 'Ожидает', description: 'Ваш заказ зарегистрирован и ожидает обработки.' },
-  accepted: { label: 'Принят', description: 'Заказ принят в работу.' },
-  diagnosing: { label: 'Диагностика', description: 'Мастер проводит диагностику оборудования.' },
-  awaiting_approval: { label: 'Ждёт одобрения', description: 'Ожидаем вашего подтверждения стоимости ремонта.' },
-  approved: { label: 'Одобрено', description: 'Цена одобрена, мастер приступает к ремонту.' },
-  in_repair: { label: 'В ремонте', description: 'Мастер выполняет ремонт вашего оборудования.' },
-  completed: { label: 'Завершён', description: 'Ремонт выполнен. Ожидается выдача.' },
-  issued: { label: 'Выдан', description: 'Оборудование возвращено клиенту.' },
-  cancelled: { label: 'Отменён', description: 'Заказ был отменён.' },
+const localeMap: Record<Language, string> = {
+  'ru': 'ru-RU',
+  'en': 'en-US',
+  'uz-cyr': 'uz-UZ',
+  'uz-lat': 'uz-UZ'
 };
 
 export default function TrackOrderPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   
   const [token, setToken] = useState('');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isPrefilled, setIsPrefilled] = useState(false);
+
+  const getStatusInfo = (status: string) => {
+    return {
+      label: t(`track.status.${status}.label`),
+      description: t(`track.status.${status}.description`)
+    };
+  };
 
   const handleTrack = useCallback(async () => {
     if (!token.trim()) return;
@@ -40,11 +43,11 @@ export default function TrackOrderPage() {
       const { data } = await api.get(`/orders/track/${token.trim()}`);
       setOrder(data.data || data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Заказ не найден. Проверьте код отслеживания.');
+      setError(err.response?.data?.message || t('track.orderNotFound'));
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     const urlToken = searchParams.get('token');
@@ -90,7 +93,7 @@ export default function TrackOrderPage() {
           onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
         >
           <ArrowLeft size={18} />
-          Назад
+          {t('common.back')}
         </button>
 
         {/* Header */}
@@ -103,10 +106,10 @@ export default function TrackOrderPage() {
             <HardDrive size={32} color="white" />
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f8fafc', marginBottom: '0.5rem' }}>
-            Отслеживание заказа
+            {t('track.title')}
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.95rem' }}>
-            Введите номер заказа для проверки статуса
+            {t('track.subtitle')}
           </p>
         </motion.div>
 
@@ -123,7 +126,7 @@ export default function TrackOrderPage() {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
-              placeholder="Например: ord1"
+              placeholder={t('track.placeholder')}
               style={{ flex: 1, padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.8)', color: '#f1f5f9', fontSize: '1.1rem', fontFamily: 'monospace', letterSpacing: '0.05em', outline: 'none', transition: 'border-color 0.2s' }}
               onFocus={(e) => { e.target.style.borderColor = 'rgba(14,165,233,0.5)'; }}
               onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
@@ -166,13 +169,13 @@ export default function TrackOrderPage() {
             {/* Order ID and status */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
               <div>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.25rem' }}>Номер заказа</p>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.25rem' }}>{t('guestOrder.orderNumber')}</p>
                 <p style={{ fontSize: '1.25rem', fontFamily: 'monospace', fontWeight: 700, color: '#0ea5e9' }}>
                   #{order.id?.slice(0, 8).toUpperCase()}
                 </p>
               </div>
               <div style={{ padding: '0.4rem 0.9rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(14,165,233,0.15)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)' }}>
-                {STATUS_LABELS[order.status]?.label || order.status}
+                {getStatusInfo(order.status).label || order.status}
               </div>
             </div>
 
@@ -195,7 +198,7 @@ export default function TrackOrderPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                 <CheckCircle size={16} style={{ color: '#10b981' }} />
                 <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center' }}>
-                  {STATUS_LABELS[order.status]?.description}
+                  {getStatusInfo(order.status).description}
                 </p>
               </div>
             </div>
@@ -203,29 +206,29 @@ export default function TrackOrderPage() {
             {/* Order details */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Дата создания</span>
+                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{t('order.createdAt')}</span>
                 <span style={{ color: '#f1f5f9', fontWeight: 500, fontSize: '0.9rem' }}>
-                  {new Date(order.order_date || order.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {new Date(order.order_date || order.created_at).toLocaleDateString(localeMap[language] || 'ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
 
               {order.details?.[0]?.equipment && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Оборудование</span>
+                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{t('order.device')}</span>
                   <span style={{ color: '#f1f5f9', fontWeight: 500, fontSize: '0.9rem' }}>{getName(order.details[0].equipment)}</span>
                 </div>
               )}
 
               {order.details?.[0]?.issue && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Неисправность</span>
+                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{t('order.issue')}</span>
                   <span style={{ color: '#f1f5f9', fontWeight: 500, fontSize: '0.9rem' }}>{getName(order.details[0].issue)}</span>
                 </div>
               )}
 
               {Number(order.total_price_uzs) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Стоимость</span>
+                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{t('order.price')}</span>
                   <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: '1.1rem' }}>
                     {Number(order.total_price_uzs).toLocaleString()} UZS
                   </span>
@@ -244,7 +247,7 @@ export default function TrackOrderPage() {
             style={{ textAlign: 'center', marginTop: '2rem' }}
           >
             <p style={{ color: '#475569', fontSize: '0.85rem' }}>
-              Попробуйте: <span style={{ color: '#0ea5e9', fontFamily: 'monospace', cursor: 'pointer' }} onClick={() => { setToken('ord1'); }}>ord1</span> или <span style={{ color: '#0ea5e9', fontFamily: 'monospace', cursor: 'pointer' }} onClick={() => { setToken('ord2'); }}>ord2</span>
+              {t('track.tryHint')} <span style={{ color: '#0ea5e9', fontFamily: 'monospace', cursor: 'pointer' }} onClick={() => { setToken('ord1'); }}>ord1</span> {t('auth.or')} <span style={{ color: '#0ea5e9', fontFamily: 'monospace', cursor: 'pointer' }} onClick={() => { setToken('ord2'); }}>ord2</span>
             </p>
           </motion.div>
         )}

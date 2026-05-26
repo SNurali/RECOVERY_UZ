@@ -110,7 +110,195 @@
     "support247": "24/7",
     "orderNumber": "Order",
     "createdAt": "Created at",
-    "statusUpdating": "Order status is being updated."
+    "statusUpdating": "Order status is being updated.",
+    "nav": {
+      "services": "Services",
+      "process": "Process",
+      "contacts": "Contacts"
+    },
+    "hero": {
+      "badge": "Data recovery without prepayment",
+      "title": "We recover data when the disk no longer responds",
+      "desc": "Recovery.uz laboratory recovers HDD, SSD, flash drives, and RAID arrays after physical and logical damage. Free diagnostics, own laboratory, and 24/7 support.",
+      "cta": "Free diagnostics"
+    },
+    "stats": {
+      "expVal": "10+",
+      "expLbl": "years of experience",
+      "onlineVal": "24/7",
+      "onlineLbl": "support",
+      "diagVal": "0 UZS",
+      "diagLbl": "diagnostics",
+      "eqVal": "PC-3000",
+      "eqLbl": "equipment"
+    },
+    "trackCard": {
+      "title": "Online request & status tracking",
+      "desc": "Submit a request without registration or check your current recovery status using a token."
+    },
+    "servicesSec": {
+      "kicker": "Services",
+      "title": "We handle complex cases, not just simple recovery",
+      "desc": "Content gathered from Recovery.uz pages: HDD repair, data recovery, RAID arrays, same-day service, upgrade and repair of equipment.",
+      "hdd": {
+        "title": "HDD & Hard Drives",
+        "label": "Surface, controller, firmware, cleanroom",
+        "text": "We recover data from bad blocks, PCB electronic board failures, microprogram/firmware damage, head stack assembly, and spindle motor issues."
+      },
+      "ssd": {
+        "title": "SSD, USB & NAND",
+        "label": "Controllers, memory chips, power circuit, logical failures",
+        "text": "We work with modern SSDs, USB flash drives, and cases where regular data recovery software is completely useless."
+      },
+      "raid": {
+        "title": "RAID Arrays",
+        "label": "RAID 0/1/5/6/10, degraded, rebuild, controllers",
+        "text": "We reconstruct RAID arrays after disk failures, controller configuration loss, incorrect rebuilds, and human errors."
+      },
+      "pc": {
+        "title": "Computers & Laptops",
+        "label": "Upgrades, diagnostics, screens, spare parts",
+        "text": "Diagnostics, sourcing of original or certified analog components, modernization, and repair of customer devices."
+      }
+    },
+    "about": {
+      "kicker": "About Company",
+      "title": "Our own laboratory in Tashkent, not a broker",
+      "text": "Recovery.uz directly states: we do not outsource your orders to subcontractors or third parties. This is critical for data privacy, as client storage often contains personal documents, photos, accounting, or sensitive code projects."
+    },
+    "advantages": {
+      "exp": {
+        "title": "10 Years of Practice",
+        "text": "Hundreds of successfully completed tasks, a database of typical faults, and experience in complex data recovery."
+      },
+      "pc3000": {
+        "title": "PC-3000 & Pro Gear",
+        "text": "We use professional hardware-software complexes (PC-3000) and licensed utilities."
+      },
+      "privacy": {
+        "title": "Full Confidentiality",
+        "text": "Customer data is strictly secured, never disclosed, and never transferred to third parties."
+      },
+      "lab": {
+        "title": "In-house Laboratory",
+        "text": "We don't pass orders to middlemen. All jobs are done right inside the Recovery.uz lab."
+      },
+      "sameday": {
+        "title": "Same-day diagnostics",
+        "text": "Fast analysis and immediate start of work thanks to our database of typical malfunctions."
+      },
+      "noprepay": {
+        "title": "No Prepayment",
+        "text": "The final cost is calculated after free diagnostics and depends entirely on the complexity."
+      }
+    },
+    "processSec": {
+      "kicker": "How we work",
+      "title": "Transparent steps from request to data retrieval",
+      "desc": "Our primary principle: first, free diagnostics and a clear agreement on cost/time, then data recovery. Customers track progress online.",
+      "step1": {
+        "title": "Request",
+        "text": "You fill in an online request or call our laboratory directly."
+      },
+      "step2": {
+        "title": "Diagnostics",
+        "text": "We check the media on professional hardware. Diagnostics are 100% free."
+      },
+      "step3": {
+        "title": "Agreement",
+        "text": "We explain the issues, terms, and the exact cost before starting any recovery work."
+      },
+      "step4": {
+        "title": "Recovery",
+        "text": "We extract your data, rebuild the directory structure, and transfer the files back to you."
+      }
+    },
+    "casesSec": {
+      "title": "Common Cases",
+      "subtitle": "When to contact us immediately",
+      "items": [
+        "Bad blocks and HDD surface degradation",
+        "Burnt PCB controllers or power surges",
+        "Firmware corruption and service area faults",
+        "Seized spindle motor or head assembly crash",
+        "SSD unresponsiveness, controller panic, or NAND failure",
+        "Degraded RAID, lost config, or incorrect rebuild"
+      ]
+    },
+    "projectsSec": {
+      "kicker": "Professional Projects",
+      "title": "We develop our own engineering tools",
+      "adminpe": {
+        "text": "System administrator bootable USB disk based on WinPE, packed with diagnostic and data recovery tools."
+      },
+      "admindp": {
+        "text": "An organized driver pack sorted by manufacturers, models, platforms, and OS versions."
+      }
+    },
+    "contactsSec": {
+      "kicker": "Contacts",
+      "title": "Get a consultation now",
+      "desc": "The main laboratory is in Tashkent, with partner drop-off points across Uzbekistan. Operating 24/7.",
+      "phone": "Phone",
+      "address": {
+        "label": "Address",
+        "value": "Tashkent city, Sagbon, 30th Dead-end, House 8, Entrance 4, Basement"
+      },
+      "workTime": {
+        "label": "Working hours",
+        "value": "24/7"
+      },
+      "form": {
+        "title": "Submit request without signing up",
+        "desc": "Describe the storage media and the issue. Technicians will see your request in the CRM, and you'll track status online.",
+        "btn": "Create request"
+      }
+    }
+  },
+  "track": {
+    "title": "Order Tracking",
+    "subtitle": "Enter your order ID to check its current status",
+    "placeholder": "e.g.: ord1",
+    "tryHint": "Try:",
+    "orderNotFound": "Order not found. Please double-check your tracking code.",
+    "status": {
+      "new": {
+        "label": "Awaiting",
+        "description": "Your order has been registered and is awaiting processing."
+      },
+      "accepted": {
+        "label": "Accepted",
+        "description": "Order has been accepted for work."
+      },
+      "diagnosing": {
+        "label": "Diagnostics",
+        "description": "Technician is diagnosing the equipment."
+      },
+      "awaiting_approval": {
+        "label": "Awaiting approval",
+        "description": "Awaiting your confirmation of the repair cost."
+      },
+      "approved": {
+        "label": "Approved",
+        "description": "Cost approved, technician is starting the recovery."
+      },
+      "in_repair": {
+        "label": "In Repair",
+        "description": "Technician is repairing/recovering your equipment."
+      },
+      "completed": {
+        "label": "Completed",
+        "description": "Recovery completed. Awaiting collection."
+      },
+      "issued": {
+        "label": "Issued",
+        "description": "Equipment has been returned to the client."
+      },
+      "cancelled": {
+        "label": "Cancelled",
+        "description": "The order has been cancelled."
+      }
+    }
   },
   "clients": {
     "title": "Clients",

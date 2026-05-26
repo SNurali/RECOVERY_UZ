@@ -110,7 +110,195 @@
     "support247": "24/7",
     "orderNumber": "Buyurtma",
     "createdAt": "Yaratilgan sana",
-    "statusUpdating": "Buyurtma holati yangilanmoqda."
+    "statusUpdating": "Buyurtma holati yangilanmoqda.",
+    "nav": {
+      "services": "Xizmatlar",
+      "process": "Jarayon",
+      "contacts": "Kontaktlar"
+    },
+    "hero": {
+      "badge": "Oldindan to'lovsiz ma'lumotlarni tiklash",
+      "title": "Disk javob bermay qolganda ma'lumotlarni qaytaramiz",
+      "desc": "Recovery.uz laboratoriyasi jismoniy va mantiqiy shikastlanishlardan so'ng HDD, SSD, flesh-disklar va RAID massivlarini tiklaydi. Bepul diagnostika, shaxsiy laboratoriya va 24/7 aloqa.",
+      "cta": "Bepul diagnostika"
+    },
+    "stats": {
+      "expVal": "10+",
+      "expLbl": "yillik tajriba",
+      "onlineVal": "24/7",
+      "onlineLbl": "aloqada",
+      "diagVal": "0 so'm",
+      "diagLbl": "diagnostika",
+      "eqVal": "PC-3000",
+      "eqLbl": "uskunalar"
+    },
+    "trackCard": {
+      "title": "Onlayn ariza va holatni kuzatish",
+      "desc": "Ro'yxatdan o'tmasdan ariza qoldiring yoki token orqali joriy tiklash holatini tekshiring."
+    },
+    "servicesSec": {
+      "kicker": "Xizmatlar",
+      "title": "Faqat oddiy tiklash emas, murakkab holatlar bilan ham ishlaymiz",
+      "desc": "Recovery.uz sahifalaridan to'plangan kontent: HDD ta'mirlash, ma'lumotlarni tiklash, RAID massivlari, murojaat kunida ishlash, texnikani modernizatsiya qilish va ta'mirlash.",
+      "hdd": {
+        "title": "HDD va qattiq disklar",
+        "label": "Sirt, kontroller, proshivka, germozona",
+        "text": "Bad blocks, plata nosozligi, mikrodastur shikastlanishi, o'qlar bloki va shpindel muammolarida ma'lumotlarni tiklaymiz."
+      },
+      "ssd": {
+        "title": "SSD, USB va NAND",
+        "label": "Kontrollerlar, xotira, quvvat, mantiqiy xatolar",
+        "text": "Zamonaviy SSD disklar, flesh-xotiralar va oddiy tiklash dasturlari yordam bera olmaydigan holatlar bilan ishlaymiz."
+      },
+      "raid": {
+        "title": "RAID massivlari",
+        "label": "RAID 0/1/5/6/10, degraded, rebuild, kontrollerlar",
+        "text": "Disklar ishdan chiqishi, kontroller sozlamalari yo'qolishi, noto'g'ri qayta yig'ish va inson omilidan keyin massivlarni tiklaymiz."
+      },
+      "pc": {
+        "title": "Kompyuter va noutbuklar",
+        "label": "Modernizatsiya, diagnostika, ekranlar, butlovchi qismlar",
+        "text": "Diagnostika, original yoki sinovdan o'tgan analog ehtiyot qismlarni tanlash, mijoz texnikasini modernizatsiya qilish va ta'mirlash."
+      }
+    },
+    "about": {
+      "kicker": "Kompaniya haqida",
+      "title": "Toshkentdagi o'z laboratoriyamiz, vositachi emasmiz",
+      "text": "Recovery.uz ochiq aytadi: buyurtmalar pudratchilarga, hamkorlarga yoki tasodifiy odamlarga berilmaydi. Bu mijozlar uchun juda muhim, chunki ma'lumot tashuvchida ko'pincha shaxsiy hujjatlar, fotosuratlar, buxgalteriya yoki ishchi loyihalar bo'ladi."
+    },
+    "advantages": {
+      "exp": {
+        "title": "10 yillik amaliyot",
+        "text": "Yuzlab muvaffaqiyatli hal qilingan vazifalar, odatiy nosozliklar bazasi va murakkab tiklash tajribasi."
+      },
+      "pc3000": {
+        "title": "PC-3000 va professional uskunalar",
+        "text": "Ixtisoslashtirilgan apparat-dasturiy majmualar va litsenziyalangan dasturlardan foydalanamiz."
+      },
+      "privacy": {
+        "title": "To'liq maxfiylik",
+        "text": "Mijoz ma'lumotlari uchinchi shaxslarga oshkor etilmaydi va berilmaydi."
+      },
+      "lab": {
+        "title": "O'z laboratoriyamiz",
+        "text": "Buyurtmalarni vositachilarga topshirmaymiz. Ishlar Recovery.uz laboratoriyasida bajariladi."
+      },
+      "sameday": {
+        "title": "Murojaat kunida",
+        "text": "Tezkor diagnostika va odatiy nosozliklar bazasi tufayli ishlarni tezda boshlash."
+      },
+      "noprepay": {
+        "title": "Oldindan to'lovsiz",
+        "text": "Narx bepul diagnostikadan so'ng aniqlanadi va murakkablikka bog'liq bo'ladi."
+      }
+    },
+    "processSec": {
+      "kicker": "Qanday ishlaymiz",
+      "title": "Arizadan tortib natijagacha shaffof yo'l",
+      "desc": "Asosiy printsip: avval diagnostika va aniq kelishuv, keyin tiklash. Mijoz ariza holatini onlayn nazorat qiladi.",
+      "step1": {
+        "title": "Ariza",
+        "text": "Siz ariza qoldirasiz yoki to'g'ridan-to'g'ri laboratoriyaga qo'ng'iroq qilasiz."
+      },
+      "step2": {
+        "title": "Diagnostika",
+        "text": "Kanalni maxsus uskunada tekshiramiz. Diagnostika bepul."
+      },
+      "step3": {
+        "title": "Kelishuv",
+        "text": "Ishlar boshlanishidan oldin muammo, muddat va narxni tushuntiramiz."
+      },
+      "step4": {
+        "title": "Tiklash",
+        "text": "Ma'lumotlarni chiqaramiz, tuzilmani saqlab qolamiz va natijani mijozga topshiramiz."
+      }
+    },
+    "casesSec": {
+      "title": "Odatiy holatlar",
+      "subtitle": "Qachon darhol murojaat qilish kerak",
+      "items": [
+        "Bad blocks va HDD yuzasi shikastlanishi",
+        "Kuygan plata yoki kuchlanish o'zgarishi",
+        "Proshivka va xizmat modullari shikastlanishi",
+        "Shpindel siqilib qolishi yoki o'qlar bloki nosozligi",
+        "SSDga kirish imkoni yo'qligi, kontroller yoki NAND nosozligi",
+        "RAID degraded, konfiguratsiya yo'qolishi, noto'g'ri rebuild"
+      ]
+    },
+    "projectsSec": {
+      "kicker": "Professional loyihalar",
+      "title": "Kompaniyaning o'z muhandislik vositalari bor",
+      "adminpe": {
+        "text": "WinPE bazasida diagnostika va recovery vositalariga ega tizim administratorining yuklash diski."
+      },
+      "admindp": {
+        "text": "Ishlab chiqaruvchilar, modellar va OT versiyalari bo'yicha saralangan original drayverlar to'plami."
+      }
+    },
+    "contactsSec": {
+      "kicker": "Kontaktlar",
+      "title": "Hozir maslahat oling",
+      "desc": "Laboratoriya Toshkentda joylashgan, shuningdek, butun Respublika bo'ylab hamkorlar tarmog'i mavjud. Ish vaqti — 24/7.",
+      "phone": "Telefon",
+      "address": {
+        "label": "Manzil",
+        "value": "Tashkent sh., Sag'bon, 30-berk ko'cha, 8-uy, 4-yo'lak, yerto'la"
+      },
+      "workTime": {
+        "label": "Ish vaqti",
+        "value": "24/7"
+      },
+      "form": {
+        "title": "Ro'yxatdan o'tmasdan ariza qoldiring",
+        "desc": "Uskuna va muammoni tavsiflang. Xodimlar arizani CRMda ko'rishadi, siz esa holatni onlayn kuzatishingiz mumkin.",
+        "btn": "Ariza yaratish"
+      }
+    }
+  },
+  "track": {
+    "title": "Buyurtmani kuzatish",
+    "subtitle": "Holatni tekshirish uchun buyurtma raqamini kiriting",
+    "placeholder": "Masalan: ord1",
+    "tryHint": "Sinab ko'ring:",
+    "orderNotFound": "Buyurtma topilmadi. Kuzatuv kodini tekshiring.",
+    "status": {
+      "new": {
+        "label": "Kutilmoqda",
+        "description": "Buyurtmangiz ro'yxatga olindi va ishlov berilishi kutilmoqda."
+      },
+      "accepted": {
+        "label": "Qabul qilindi",
+        "description": "Buyurtma ishga qabul qilindi."
+      },
+      "diagnosing": {
+        "label": "Diagnostika",
+        "description": "Usta uskunani diagnostika qilmoqda."
+      },
+      "awaiting_approval": {
+        "label": "Tasdiqlash kutilmoqda",
+        "description": "Ta'mirlash narxini tasdiqlashingizni kutmoqdamiz."
+      },
+      "approved": {
+        "label": "Tasdiqlandi",
+        "description": "Narx tasdiqlandi, usta tiklashni boshlamoqda."
+      },
+      "in_repair": {
+        "label": "Ta'mirlanmoqda",
+        "description": "Usta uskunangizni ta'mirlamoqda/tiklamoqda."
+      },
+      "completed": {
+        "label": "Yakunlandi",
+        "description": "Tiklash bajarildi. Topshirish kutilmoqda."
+      },
+      "issued": {
+        "label": "Topshirildi",
+        "description": "Uskuna mijozga qaytarildi."
+      },
+      "cancelled": {
+        "label": "Bekor qilindi",
+        "description": "Buyurtma bekor qilindi."
+      }
+    }
   },
   "clients": {
     "title": "Mijozlar",
