@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { DataTable } from '../../components/DataTable';
-import { Plus, Edit2, Check, X } from 'lucide-react';
+import { Plus, Edit2, Check, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../contexts/AuthContext';
 
 const roleLabels: Record<string, string> = {
   admin: 'Администратор',
@@ -24,6 +25,7 @@ export default function Users() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState('');
+  const { user: currentUser } = useAuth();
   const [form, setForm] = useState({
     full_name: '',
     login: '',
@@ -83,6 +85,18 @@ export default function Users() {
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditRole('');
+  };
+
+  const handleDelete = async (userId: string, userName: string) => {
+    if (!confirm(`Удалить пользователя "${userName}"? Это действие необратимо.`)) return;
+    try {
+      await api.delete(`/users/${userId}`);
+      toast.success('Пользователь удалён');
+      await fetchUsers();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Не удалось удалить пользователя');
+    }
   };
 
   const columns = [
@@ -150,6 +164,25 @@ export default function Users() {
       key: 'login', 
       title: 'Логин', 
       render: (item: any) => <span className="text-secondary">{item.login}</span>
+    },
+    {
+      key: 'actions',
+      title: '',
+      render: (item: any) => {
+        const role = item.role?.name_eng || item.role;
+        const isSelf = item.id === currentUser?.id;
+        if (isSelf) return null;
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(item.id, item.full_name); }}
+            className="btn-icon"
+            style={{ color: '#f87171', padding: '0.3rem', opacity: 0.7 }}
+            title="Удалить пользователя"
+          >
+            <Trash2 size={16} />
+          </button>
+        );
+      }
     }
   ];
 

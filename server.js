@@ -277,6 +277,29 @@ app.patch('/v1/users/:id', authRequired, requireRoles('admin'), async (req, res)
   res.json({ data: await getUserById(req.params.id) });
 });
 
+app.delete('/v1/users/:id', authRequired, requireRoles('admin'), async (req, res) => {
+  // Prevent admin from deleting themselves
+  if (req.params.id === req.user.userId) {
+    return res.status(403).json({ message: 'Нельзя удалить самого себя' });
+  }
+  const user = await getUserById(req.params.id);
+  if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+
+  try {
+    // Remove order_details references (attached_to)
+    await pool.query(`UPDATE order_details SET attached_to = NULL WHERE attached_to = $1`, [req.params.id]);
+    // Remove orders belonging to this user
+    await pool.query(`DELETE FROM order_details WHERE order_id IN (SELECT id FROM orders WHERE client_id = $1)`, [req.params.id]);
+    await pool.query(`DELETE FROM orders WHERE client_id = $1`, [req.params.id]);
+    // Delete the user
+    await pool.query(`DELETE FROM users WHERE id = $1`, [req.params.id]);
+    res.json({ success: true, message: 'Пользователь удалён' });
+  } catch (err) {
+    console.error('delete user:', err);
+    res.status(500).json({ message: 'Не удалось удалить пользователя' });
+  }
+});
+
 // ============================================================
 // CLIENTS (subset of users)
 // ============================================================
