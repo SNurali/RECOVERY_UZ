@@ -6,7 +6,7 @@ import * as telegram from './backend/src/telegram/bot.js';
 const app = express();
 const PORT = 3004;
 
-app.use(cors({ origin: ['http://localhost:3003', 'http://localhost:5173'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:3003', 'http://localhost:5173', 'https://hddfix.uz', 'http://hddfix.uz', 'https://recovery.uz', 'http://recovery.uz'], credentials: true }));
 app.use(express.json());
 
 // Mock databases
