@@ -126,9 +126,9 @@ export default function GuestView() {
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(22px)', background: 'rgba(7,17,31,0.76)', borderBottom: '1px solid rgba(148,163,184,0.14)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <button onClick={() => scrollTo('top')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'none', border: 0, cursor: 'pointer' }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 24, repeat: Infinity, ease: 'linear' }} style={{ width: 38, height: 38, borderRadius: 14, background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 35px rgba(14,165,233,0.28)' }}>
-              <HardDrive size={20} color="white" />
-            </motion.div>
+            <div style={{ width: 42, height: 42, transform: 'scale(0.78)', transformOrigin: 'center' }}>
+              <AnimatedLogo size={42} showText={false} />
+            </div>
             <span style={{ fontSize: '1.05rem', fontWeight: 900, letterSpacing: '0.04em', color: '#f8fafc' }}>RECOVERY.UZ</span>
           </button>
 
@@ -153,30 +153,30 @@ export default function GuestView() {
       </nav>
 
       <main id="top" style={{ position: 'relative', zIndex: 1 }}>
-        <section style={{ maxWidth: 1200, margin: '0 auto', padding: '4.5rem 1.25rem 3.5rem' }}>
+        <section className="hero-section" style={{ maxWidth: 1200, margin: '0 auto', padding: '4.5rem 1.25rem 3.5rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '2rem', alignItems: 'center' }}>
             <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.55rem', padding: '0.45rem 0.8rem', borderRadius: 999, background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.28)', color: '#7dd3fc', fontWeight: 900, fontSize: '0.82rem', marginBottom: '1.4rem' }}>
                 <Activity size={16} /> {t('guest.hero.badge')}
               </div>
 
-              <h1 style={{ fontSize: 'clamp(2.8rem, 7vw, 5.7rem)', lineHeight: 0.94, letterSpacing: '-0.07em', margin: '0 0 1.4rem', fontWeight: 950 }}>
+              <h1 className="hero-title" style={{ fontSize: 'clamp(2.8rem, 7vw, 5.7rem)', lineHeight: 0.94, letterSpacing: '-0.07em', margin: '0 0 1.4rem', fontWeight: 950 }}>
                 {t('guest.hero.title')}
               </h1>
               <p style={{ fontSize: 'clamp(1.05rem, 2vw, 1.3rem)', lineHeight: 1.7, color: '#a8b5c7', maxWidth: 640, margin: '0 0 1.8rem' }}>
                 {t('guest.hero.desc')}
               </p>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1.6rem' }}>
-                <button onClick={() => navigate('/guest/new-order')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem', padding: '1rem 1.35rem', borderRadius: 16, border: 0, background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', color: 'white', fontWeight: 900, cursor: 'pointer', boxShadow: '0 18px 45px rgba(14,165,233,0.28)' }}>
+              <div className="hero-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1.6rem' }}>
+                <button className="hero-action" onClick={() => navigate('/guest/new-order')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem', padding: '1rem 1.35rem', borderRadius: 16, border: 0, background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', color: 'white', fontWeight: 900, cursor: 'pointer', boxShadow: '0 18px 45px rgba(14,165,233,0.28)' }}>
                   {t('guest.hero.cta')} <ArrowRight size={19} />
                 </button>
-                <a href={contact.phoneHref} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem', padding: '1rem 1.2rem', borderRadius: 16, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#f8fafc', textDecoration: 'none', fontWeight: 900 }}>
+                <a className="hero-action" href={contact.phoneHref} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem', padding: '1rem 1.2rem', borderRadius: 16, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#f8fafc', textDecoration: 'none', fontWeight: 900 }}>
                   <Phone size={19} /> {contact.phone}
                 </a>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '0.8rem', maxWidth: 620 }}>
+              <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '0.8rem', maxWidth: 620 }}>
                 {[
                   [t('guest.stats.expVal'), t('guest.stats.expLbl')],
                   [t('guest.stats.onlineVal'), t('guest.stats.onlineLbl')],
@@ -211,7 +211,7 @@ export default function GuestView() {
           </div>
         </section>
 
-        <section id="services" style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
+        <motion.section id="services" initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: 0.55 }} style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
           <SectionHeader kicker={t('guest.servicesSec.kicker')} title={t('guest.servicesSec.title')} text={t('guest.servicesSec.desc')} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
             {services.map((service, index) => {
@@ -231,9 +231,9 @@ export default function GuestView() {
               );
             })}
           </div>
-        </section>
+        </motion.section>
 
-        <section style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
+        <motion.section initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: 0.55 }} style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', alignItems: 'stretch' }}>
             <div style={{ borderRadius: 30, padding: '2rem', background: 'linear-gradient(145deg, rgba(14,165,233,0.16), rgba(99,102,241,0.12))', border: '1px solid rgba(125,211,252,0.2)' }}>
               <div style={{ color: '#7dd3fc', fontWeight: 900, marginBottom: '0.7rem' }}>{t('guest.about.kicker')}</div>
@@ -253,22 +253,22 @@ export default function GuestView() {
               })}
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section id="process" style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
+        <motion.section id="process" initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: 0.55 }} style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
           <SectionHeader kicker={t('guest.processSec.kicker')} title={t('guest.processSec.title')} text={t('guest.processSec.desc')} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem' }}>
             {processSteps.map((step, index) => (
-              <div key={step.title} style={{ position: 'relative', padding: '1.5rem', borderRadius: 26, background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.14)' }}>
+              <motion.div key={step.title} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }} style={{ position: 'relative', padding: '1.5rem', borderRadius: 26, background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.14)' }}>
                 <div style={{ width: 42, height: 42, borderRadius: 14, display: 'grid', placeItems: 'center', background: 'rgba(14,165,233,0.14)', color: '#7dd3fc', fontWeight: 950, marginBottom: '1rem' }}>{index + 1}</div>
                 <h3 style={{ margin: '0 0 0.55rem' }}>{step.title}</h3>
                 <p style={{ margin: 0, color: '#94a3b8', lineHeight: 1.6 }}>{step.text}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
+        <motion.section initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: 0.55 }} style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
             <div style={{ padding: '2rem', borderRadius: 30, background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.14)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', color: '#7dd3fc', fontWeight: 900, marginBottom: '1rem' }}><Wrench size={20} /> {t('guest.casesSec.title')}</div>
@@ -295,9 +295,9 @@ export default function GuestView() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section id="contacts" style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem 5rem' }}>
+        <motion.section id="contacts" initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: 0.55 }} style={{ maxWidth: 1200, margin: '0 auto', padding: '3.5rem 1.25rem 5rem' }}>
           <div style={{ borderRadius: 36, overflow: 'hidden', background: 'rgba(15,23,42,0.82)', border: '1px solid rgba(148,163,184,0.18)', boxShadow: '0 35px 90px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
               <div style={{ padding: '2rem' }}>
@@ -328,13 +328,23 @@ export default function GuestView() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
       </main>
 
       <style>{`
         @media (min-width: 760px) {
           .desktop-nav-link { display: inline-flex !important; }
           .desktop-nav-link:hover { background: rgba(255,255,255,0.06) !important; color: #f8fafc !important; border-color: rgba(255,255,255,0.12) !important; }
+        }
+        @media (max-width: 640px) {
+          .hero-section { padding-top: 2.25rem !important; padding-bottom: 2.5rem !important; }
+          .hero-title { font-size: clamp(2.15rem, 14vw, 3.15rem) !important; letter-spacing: -0.055em !important; line-height: 0.98 !important; }
+          .hero-actions { display: grid !important; grid-template-columns: 1fr !important; }
+          .hero-action { justify-content: center !important; width: 100% !important; box-sizing: border-box !important; }
+          .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 420px) {
+          .stats-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
