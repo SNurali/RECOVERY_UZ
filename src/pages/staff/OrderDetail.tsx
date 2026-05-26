@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Check, ShieldAlert, DollarSign, Play, Clock } from 'lucide-react';
+import { ArrowLeft, Check, ShieldAlert, DollarSign, Play, Clock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusLabels: Record<string, string> = {
@@ -178,6 +178,33 @@ export default function StaffOrderDetail() {
               </div>
             )}
 
+            {/* Admin/operator can approve price on behalf of client */}
+            {isAwaitingApproval && !isClient && (user?.role === 'admin' || user?.role === 'operator') && (
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  onClick={async () => {
+                    if (!confirm('Одобрить цену за клиента? Заказ перейдёт в статус «Одобрен».')) return;
+                    setUpdating(true);
+                    try {
+                      await api.post(`/orders/${id}/approve-price`);
+                      toast.success('Цена одобрена за клиента');
+                      await fetchOrderDetails();
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setUpdating(false);
+                    }
+                  }}
+                  disabled={updating}
+                  className="btn btn-primary"
+                  style={{ backgroundColor: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Check size={16} />
+                  Одобрить цену за клиента
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2 mt-4">
               {allowedTransitions.map(st => (
                 <button 
@@ -200,6 +227,31 @@ export default function StaffOrderDetail() {
                 >
                   <Check size={16} />
                   Выдать и закрыть
+                </button>
+              )}
+
+              {/* Delete order — admin only */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Удалить заказ #${order.id.slice(0, 8).toUpperCase()}? Это действие нельзя отменить.`)) return;
+                    setUpdating(true);
+                    try {
+                      await api.delete(`/orders/${id}`);
+                      toast.success('Заказ удалён');
+                      navigate('/staff/orders');
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setUpdating(false);
+                    }
+                  }}
+                  disabled={updating}
+                  className="btn"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Trash2 size={16} />
+                  Удалить заказ
                 </button>
               )}
             </div>

@@ -1,0 +1,24 @@
+# Local development database only.
+# Backend and frontend run on host (npm run server / npm run dev).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: recovery_db_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-recovery_uz}
+      POSTGRES_USER:     ${DB_USER:-recovery_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-recovery_secret}
+    volumes:
+      - recovery_pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "${DB_PORT:-5436}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-recovery_admin} -d ${DB_NAME:-recovery_uz}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  recovery_pgdata:

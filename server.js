@@ -1,601 +1,684 @@
+/**
+ * RECOVERY.UZ — Unified backend server
+ * Real PostgreSQL + JWT auth + Telegram notifications.
+ * Used identically on local and production.
+ *
+ * Required env (see .env.example):
+ *   PORT, JWT_SECRET
+ *   DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+ *   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+ */
+
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import pg from 'pg';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import * as telegram from './backend/src/telegram/bot.js';
 
+const { Pool } = pg;
+
+// ----------------------- Config -----------------------
+const PORT       = Number(process.env.PORT || 3004);
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not set');
+  process.exit(1);
+}
+
+const pool = new Pool({
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     Number(process.env.DB_PORT || 5436),
+  user:     process.env.DB_USER     || 'recovery_admin',
+  password: process.env.DB_PASSWORD || 'recovery_secret',
+  database: process.env.DB_NAME     || 'recovery_uz',
+  max: 10,
+  idleTimeoutMillis: 30_000,
+});
+pool.on('error', err => console.error('[pg pool] error:', err));
+
+// ----------------------- App -----------------------
 const app = express();
-const PORT = 3004;
-
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.ip}`);
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
 
-// Mock databases
-const users = [
-  { id: '1', login: 'admin@hdd-fixer.uz', password: 'admin123', role: 'admin', full_name: 'Акмаль Абдуллаев (Админ)', phone: '+998 90 123-45-67', email: 'admin@hdd-fixer.uz' },
-  { id: '2', login: 'client@test.uz', password: 'client123', role: 'client', full_name: 'Нурбек Алимов', phone: '+998 99 888-77-66', email: 'client@test.uz', telegram_chat_id: '123456789' },
-  { id: '3', login: 'operator@test.uz', password: 'operator123', role: 'operator', full_name: 'Озода Каримова', phone: '+998 90 987-65-43', email: 'operator@test.uz' },
-  { id: '4', login: 'master1@test.uz', password: 'master123', role: 'master', full_name: 'Дониёр Юсупов', phone: '+998 93 111-22-33', email: 'master1@test.uz' },
-  { id: '5', login: 'master2@test.uz', password: 'master123', role: 'master', full_name: 'Джасур Усманов', phone: '+998 93 444-55-66', email: 'master2@test.uz' },
-  { id: '6', login: 'client2@test.uz', password: 'client123', role: 'client', full_name: 'Фарход Рахимов', phone: '+998 91 222-33-44', email: 'client2@test.uz', telegram_chat_id: null },
-  { id: '7', login: 'client3@test.uz', password: 'client123', role: 'client', full_name: 'Дилноза Хасанова', phone: '+998 97 555-66-77', email: 'client3@test.uz', telegram_chat_id: '987654321' },
-  { id: '8', login: 'client4@test.uz', password: 'client123', role: 'client', full_name: 'Бахтиёр Мирзаев', phone: '+998 94 777-88-99', email: null, telegram_chat_id: null }
-];
+// ----------------------- Auth middlewares -----------------------
+function getToken(req) {
+  const auth = req.headers.authorization;
+  return auth?.startsWith('Bearer ') ? auth.slice(7) : null;
+}
 
-const equipments = [
-  { id: 'eq1', name_rus: 'Жесткий диск HDD 3.5"', name_cyr: 'Қаттиқ диск HDD 3.5"', name_lat: 'Qattiq disk HDD 3.5"', name_eng: 'Hard Drive HDD 3.5"' },
-  { id: 'eq2', name_rus: 'Твердотельный накопитель SSD', name_cyr: 'Тезкор хотира SSD', name_lat: 'Tezkor xotira SSD', name_eng: 'Solid State Drive SSD' },
-  { id: 'eq3', name_rus: 'Внешний жесткий диск', name_cyr: 'Ташқи қаттиқ диск', name_lat: 'Tashqi qattiq disk', name_eng: 'External HDD' }
-];
-
-const issues = [
-  { id: 'iss1', name_rus: 'Не определяется в BIOS', name_cyr: 'BIOS-да аниқланмаяпти', name_lat: 'BIOS-da aniqlanmayapti', name_eng: 'Not detected in BIOS' },
-  { id: 'iss2', name_rus: 'Стук внутри гермоблока', name_cyr: 'Гермоблок ичида тақиллаш', name_lat: 'Germoblok ichida taqillash', name_eng: 'Clicking sound inside HDA' },
-  { id: 'iss3', name_rus: 'Случайное удаление файлов', name_cyr: 'Файлларнинг тасодифий ўчирилиши', name_lat: 'Fayllarning tasodifiy o\'chirilishi', name_eng: 'Accidental file deletion' }
-];
-
-const services = [
-  { id: 'srv1', name_rus: 'Восстановление данных с магнитных пластин', name_cyr: 'Магнит пластиналардан маълумотларни тиклаш', name_lat: 'Magnit plastinalardan ma\'lumotlarni tiklash', name_eng: 'Data recovery from magnetic platters' },
-  { id: 'srv2', name_rus: 'Замена блока магнитных головок', name_cyr: 'Магнит каллаклар блокини алмаштириш', name_lat: 'Magnit kallaklar blokini almashtirish', name_eng: 'Heads stack assembly replacement' },
-  { id: 'srv3', name_rus: 'Ремонт платы контроллера', name_cyr: 'Контроллер платасини таъмирлаш', name_lat: 'Kontroller platasini ta\'mirlash', name_eng: 'PCB repair' }
-];
-
-const orders = [
-  {
-    id: 'ord1',
-    order_date: new Date().toISOString(),
-    status: 'diagnosing',
-    price_approved_at: null,
-    price_rejected_at: null,
-    total_price_uzs: 1500000,
-    total_paid_uzs: 0,
-    client: users[1],
-    details: [
-      {
-        id: 'det1',
-        serial_number: 'WD-WCC7K4PZ9',
-        equipment: equipments[0],
-        issue: issues[0],
-        service: services[0],
-        price_uzs: 1500000,
-        attached_to: '4',
-        master: users[3]
-      }
-    ]
-  },
-  {
-    id: 'ord2',
-    order_date: new Date(Date.now() - 86400000).toISOString(),
-    status: 'awaiting_approval',
-    price_approved_at: null,
-    price_rejected_at: null,
-    total_price_uzs: 2500000,
-    total_paid_uzs: 0,
-    client: users[1],
-    details: [
-      {
-        id: 'det2',
-        serial_number: 'SN-SSD-970EVO',
-        equipment: equipments[1],
-        issue: issues[1],
-        service: services[1],
-        price_uzs: 2500000,
-        attached_to: '5',
-        master: users[4]
-      }
-    ]
+function authRequired(req, res, next) {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ message: 'Не авторизован' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ message: 'Сеанс истёк' });
   }
-];
+}
 
-// Helper to check token / current user simulation
-let currentUser = null; // No user logged in by default
+function authOptional(req, _res, next) {
+  const token = getToken(req);
+  if (token) { try { req.user = jwt.verify(token, JWT_SECRET); } catch { /* ignore */ } }
+  next();
+}
 
-// Auth endpoints
-app.post('/v1/auth/login', (req, res) => {
-  const { login, password } = req.body;
-  const user = users.find(u => u.login === login && u.password === password);
-  
-  if (!user) {
-    return res.status(401).json({ message: 'Неверный логин или пароль' });
-  }
-  
-  currentUser = user;
-  const { password: _, ...userWithoutPassword } = user;
-  res.json({ data: { user: userWithoutPassword, token: 'mock-jwt-token-' + user.id } });
-});
-
-app.post('/v1/auth/logout', (req, res) => {
-  currentUser = null;
-  res.json({ message: 'Logged out' });
-});
-
-// User endpoints
-app.get('/v1/users/me', (req, res) => {
-  if (!currentUser) {
-    return res.status(401).json({ message: 'Не авторизован' });
-  }
-  const { password: _, ...userWithoutPassword } = currentUser;
-  res.json(userWithoutPassword);
-});
-
-app.get('/v1/users/masters', (req, res) => {
-  const masters = users.filter(u => u.role === 'master');
-  res.json({ data: masters });
-});
-
-app.get('/v1/users', (req, res) => {
-  res.json({ data: users });
-});
-
-app.post('/v1/users', (req, res) => {
-  const newUser = {
-    id: String(users.length + 1),
-    ...req.body
-  };
-  users.push(newUser);
-  res.status(201).json(newUser);
-});
-
-// Update user (change role, etc.)
-app.patch('/v1/users/:id', (req, res) => {
-  const user = users.find(u => u.id === req.params.id);
-  if (!user) {
-    return res.status(404).json({ message: 'Пользователь не найден' });
-  }
-  Object.assign(user, req.body);
-  res.json({ data: user });
-});
-
-// Directory endpoints
-app.get('/v1/equipments', (req, res) => {
-  res.json({ data: equipments });
-});
-
-app.post('/v1/equipments', (req, res) => {
-  const newEq = { id: 'eq' + (equipments.length + 1), ...req.body };
-  equipments.push(newEq);
-  res.status(201).json(newEq);
-});
-
-app.patch('/v1/equipments/:id', (req, res) => {
-  const item = equipments.find(e => e.id === req.params.id);
-  if (item) Object.assign(item, req.body);
-  res.json(item);
-});
-
-app.delete('/v1/equipments/:id', (req, res) => {
-  const index = equipments.findIndex(e => e.id === req.params.id);
-  if (index !== -1) equipments.splice(index, 1);
-  res.json({ success: true });
-});
-
-app.get('/v1/issues', (req, res) => {
-  res.json({ data: issues });
-});
-
-app.post('/v1/issues', (req, res) => {
-  const newIss = { id: 'iss' + (issues.length + 1), ...req.body };
-  issues.push(newIss);
-  res.status(201).json(newIss);
-});
-
-app.patch('/v1/issues/:id', (req, res) => {
-  const item = issues.find(e => e.id === req.params.id);
-  if (item) Object.assign(item, req.body);
-  res.json(item);
-});
-
-app.delete('/v1/issues/:id', (req, res) => {
-  const index = issues.findIndex(e => e.id === req.params.id);
-  if (index !== -1) issues.splice(index, 1);
-  res.json({ success: true });
-});
-
-app.get('/v1/services', (req, res) => {
-  res.json({ data: services });
-});
-
-app.post('/v1/services', (req, res) => {
-  const newSrv = { id: 'srv' + (services.length + 1), ...req.body };
-  services.push(newSrv);
-  res.status(201).json(newSrv);
-});
-
-app.patch('/v1/services/:id', (req, res) => {
-  const item = services.find(e => e.id === req.params.id);
-  if (item) Object.assign(item, req.body);
-  res.json(item);
-});
-
-app.delete('/v1/services/:id', (req, res) => {
-  const index = services.findIndex(e => e.id === req.params.id);
-  if (index !== -1) services.splice(index, 1);
-  res.json({ success: true });
-});
-
-// Clients endpoints
-app.get('/v1/clients', (req, res) => {
-  const clients = users.filter(u => u.role === 'client');
-  res.json({ data: clients });
-});
-
-app.post('/v1/clients', (req, res) => {
-  const newClient = {
-    id: String(users.length + 1),
-    role: 'client',
-    ...req.body
-  };
-  users.push(newClient);
-  res.status(201).json(newClient);
-});
-
-// Dashboard stats endpoint
-app.get('/v1/orders/stats', (req, res) => {
-  const activeStatuses = ['diagnosing', 'awaiting_approval', 'approved', 'in_repair'];
-  const completedStatuses = ['completed', 'issued'];
-  res.json({
-    data: {
-      total: orders.length,
-      in_repair: orders.filter(o => activeStatuses.includes(o.status)).length,
-      completed_today: orders.filter(o => completedStatuses.includes(o.status)).length
+function requireRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Нет доступа' });
     }
-  });
-});
-
-// List orders endpoint
-app.get('/v1/orders/list', (req, res) => {
-  // If current user is a client, only return their orders
-  if (currentUser && currentUser.role === 'client') {
-    const clientOrders = orders.filter(o => o.client?.id === currentUser.id);
-    return res.json({ data: clientOrders });
-  }
-  res.json({ data: orders });
-});
-
-app.get('/v1/orders', (req, res) => {
-  if (currentUser && currentUser.role === 'client') {
-    const clientOrders = orders.filter(o => o.client?.id === currentUser.id);
-    return res.json({ data: clientOrders });
-  }
-  res.json({ data: orders });
-});
-
-app.post('/v1/orders', (req, res) => {
-  const { details } = req.body;
-  const newOrder = {
-    id: 'ord' + (orders.length + 1),
-    order_date: new Date().toISOString(),
-    status: 'new',
-    price_approved_at: null,
-    price_rejected_at: null,
-    total_price_uzs: 0,
-    total_paid_uzs: 0,
-    client: currentUser?.role === 'client' ? currentUser : users.find(u => u.role === 'client'),
-    details: details.map((d, idx) => ({
-      id: 'det_' + Date.now() + '_' + idx,
-      serial_number: d.serial_number || '',
-      equipment: equipments.find(e => e.id === d.equipment_id) || equipments[0],
-      issue: issues.find(i => i.id === d.issue_id) || issues[0],
-      price_uzs: 0,
-      attached_to: null,
-      master: null
-    }))
+    next();
   };
-  orders.push(newOrder);
-  
-  // Telegram notification
-  telegram.notifyNewOrder(newOrder);
-  
-  res.status(201).json({ data: newOrder });
+}
+
+// ----------------------- Helpers -----------------------
+async function getUserById(userId) {
+  const { rows } = await pool.query(
+    `SELECT id, full_name, email, phone, role, telegram, telegram_chat_id
+     FROM users WHERE id = $1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function loadOrderFull(orderId) {
+  const orderResult = await pool.query(
+    `SELECT o.*,
+            u.full_name        AS client_full_name,
+            u.phone            AS client_phone,
+            u.email            AS client_email,
+            u.telegram         AS client_telegram,
+            u.telegram_chat_id AS client_telegram_chat_id
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.client_id
+      WHERE o.id = $1`,
+    [orderId]
+  );
+  if (!orderResult.rows[0]) return null;
+  const order = orderResult.rows[0];
+
+  const detailsResult = await pool.query(
+    `SELECT od.*,
+       e.name_rus AS equipment_name_rus, e.name_cyr AS equipment_name_cyr, e.name_lat AS equipment_name_lat, e.name_eng AS equipment_name_eng,
+       i.name_rus AS issue_name_rus,     i.name_cyr AS issue_name_cyr,     i.name_lat AS issue_name_lat,     i.name_eng AS issue_name_eng,
+       s.name_rus AS service_name_rus,   s.name_cyr AS service_name_cyr,   s.name_lat AS service_name_lat,   s.name_eng AS service_name_eng,
+       m.full_name AS master_name, m.phone AS master_phone
+     FROM order_details od
+     LEFT JOIN equipments e ON e.id = od.equipment_id
+     LEFT JOIN issues     i ON i.id = od.issue_id
+     LEFT JOIN services   s ON s.id = od.service_id
+     LEFT JOIN users      m ON m.id = od.attached_to
+     WHERE od.order_id = $1
+     ORDER BY od.created_at`,
+    [orderId]
+  );
+
+  return {
+    id: order.id,
+    order_date: order.created_at,
+    status: order.status,
+    price_approved_at: order.price_approved_at,
+    price_rejected_at: order.price_rejected_at,
+    rejection_reason:  order.rejection_reason,
+    total_price_uzs:   Number(order.total_price_uzs || 0),
+    total_paid_uzs:    Number(order.total_paid_uzs  || 0),
+    public_tracking_token: order.public_tracking_token,
+    guest_name:  order.guest_name,
+    guest_phone: order.guest_phone,
+    client: order.client_id ? {
+      id:                order.client_id,
+      full_name:         order.client_full_name,
+      phone:             order.client_phone,
+      email:             order.client_email,
+      telegram:          order.client_telegram,
+      telegram_chat_id:  order.client_telegram_chat_id,
+    } : null,
+    details: detailsResult.rows.map(d => ({
+      id: d.id,
+      serial_number: d.serial_number,
+      notes:         d.notes,
+      price_uzs:     Number(d.price_uzs || 0),
+      attached_to:   d.attached_to,
+      equipment: d.equipment_id ? { id: d.equipment_id, name_rus: d.equipment_name_rus, name_cyr: d.equipment_name_cyr, name_lat: d.equipment_name_lat, name_eng: d.equipment_name_eng } : null,
+      issue:     d.issue_id     ? { id: d.issue_id,     name_rus: d.issue_name_rus,     name_cyr: d.issue_name_cyr,     name_lat: d.issue_name_lat,     name_eng: d.issue_name_eng     } : null,
+      service:   d.service_id   ? { id: d.service_id,   name_rus: d.service_name_rus,   name_cyr: d.service_name_cyr,   name_lat: d.service_name_lat,   name_eng: d.service_name_eng   } : null,
+      master:    d.attached_to  ? { id: d.attached_to,  full_name: d.master_name, phone: d.master_phone } : null,
+    })),
+  };
+}
+
+function signToken(user) {
+  return jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+
+app.post('/v1/auth/login', async (req, res) => {
+  const { login, password } = req.body || {};
+  if (!login || !password) return res.status(400).json({ message: 'Введите логин и пароль' });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, full_name, email, phone, password_hash, role
+         FROM users
+        WHERE login = $1 OR email = $1 OR phone = $1
+        LIMIT 1`,
+      [login]
+    );
+    const user = rows[0];
+    if (!user) return res.status(401).json({ message: 'Неверный логин или пароль' });
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok)   return res.status(401).json({ message: 'Неверный логин или пароль' });
+
+    const { password_hash, ...userData } = user;
+    res.json({ data: { user: userData, token: signToken(user) } });
+  } catch (err) {
+    console.error('login:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
 });
 
-// Get order details
-app.get('/v1/orders/:id', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) {
-    return res.status(404).json({ message: 'Заказ не найден' });
+app.post('/v1/auth/register', async (req, res) => {
+  const { full_name, phone, email, password } = req.body || {};
+  if (!full_name || !phone || !password) return res.status(400).json({ message: 'Заполните обязательные поля' });
+  if (password.length < 6)               return res.status(400).json({ message: 'Пароль должен быть не менее 6 символов' });
+
+  try {
+    const exists = await pool.query(
+      `SELECT 1 FROM users WHERE login=$1 OR phone=$1 OR email=$2`,
+      [phone, email || null]
+    );
+    if (exists.rows.length) return res.status(409).json({ message: 'Пользователь уже существует' });
+
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (login, password_hash, role, full_name, phone, email)
+       VALUES ($1, $2, 'client', $3, $4, $5)
+       RETURNING id, full_name, email, phone, role`,
+      [email || phone, hash, full_name, phone, email || null]
+    );
+    res.status(201).json({ data: { user: rows[0], token: signToken(rows[0]), message: 'Регистрация успешна' } });
+  } catch (err) {
+    console.error('register:', err);
+    res.status(500).json({ message: 'Ошибка регистрации' });
+  }
+});
+
+app.post('/v1/auth/logout', (_req, res) => res.json({ message: 'ok' }));
+
+app.get('/v1/users/me', authRequired, async (req, res) => {
+  const user = await getUserById(req.user.userId);
+  if (!user) return res.status(401).json({ message: 'Не авторизован' });
+  res.json(user);
+});
+
+// ============================================================
+// USERS
+// ============================================================
+
+app.get('/v1/users', authRequired, requireRoles('admin','operator'), async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, full_name, email, phone, role, login FROM users ORDER BY created_at DESC`
+  );
+  res.json({ data: rows });
+});
+
+app.get('/v1/users/masters', authRequired, async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, full_name, phone FROM users WHERE role='master' ORDER BY full_name`
+  );
+  res.json({ data: rows });
+});
+
+app.post('/v1/users', authRequired, requireRoles('admin'), async (req, res) => {
+  const { full_name, login, password, role, phone, email } = req.body || {};
+  if (!full_name || !login || !password || !role) return res.status(400).json({ message: 'Заполните обязательные поля' });
+  if (!['admin','operator','master','client'].includes(role)) return res.status(400).json({ message: 'Неверная роль' });
+
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (login, password_hash, role, full_name, phone, email)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id, full_name, email, phone, role`,
+      [login, hash, role, full_name, phone || null, email || null]
+    );
+    res.status(201).json({ data: rows[0] });
+  } catch (err) {
+    console.error('create user:', err);
+    if (err.code === '23505') return res.status(409).json({ message: 'Логин уже занят' });
+    res.status(500).json({ message: 'Не удалось создать пользователя' });
+  }
+});
+
+app.patch('/v1/users/:id', authRequired, requireRoles('admin'), async (req, res) => {
+  const fields = [];
+  const values = [];
+  let i = 1;
+  for (const k of ['full_name','phone','email','role']) {
+    if (req.body[k] !== undefined) { fields.push(`${k} = $${i++}`); values.push(req.body[k]); }
+  }
+  if (!fields.length) return res.json({ data: await getUserById(req.params.id) });
+  values.push(req.params.id);
+  await pool.query(`UPDATE users SET ${fields.join(',')} WHERE id = $${i}`, values);
+  res.json({ data: await getUserById(req.params.id) });
+});
+
+// ============================================================
+// CLIENTS (subset of users)
+// ============================================================
+
+app.get('/v1/clients', authRequired, async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, full_name, phone, email, telegram, telegram_chat_id
+     FROM users WHERE role='client' ORDER BY full_name`
+  );
+  res.json({ data: rows });
+});
+
+app.post('/v1/clients', authRequired, requireRoles('admin','operator'), async (req, res) => {
+  const { full_name, phone, email, telegram_chat_id } = req.body || {};
+  if (!full_name || !phone) return res.status(400).json({ message: 'ФИО и телефон обязательны' });
+  try {
+    const tempPassword = Math.random().toString(36).slice(-10);
+    const hash = await bcrypt.hash(tempPassword, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (login, password_hash, role, full_name, phone, email, telegram_chat_id)
+       VALUES ($1,$2,'client',$3,$4,$5,$6)
+       RETURNING id, full_name, email, phone, telegram_chat_id`,
+      [phone, hash, full_name, phone, email || null, telegram_chat_id || null]
+    );
+    res.status(201).json({ data: rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'Клиент с таким телефоном уже есть' });
+    console.error('create client:', err);
+    res.status(500).json({ message: 'Не удалось добавить клиента' });
+  }
+});
+
+// ============================================================
+// CATALOG: equipments / issues / services
+// ============================================================
+
+const CATALOGS = ['equipments', 'issues', 'services'];
+
+for (const table of CATALOGS) {
+  app.get(`/v1/${table}`, async (_req, res) => {
+    const { rows } = await pool.query(`SELECT * FROM ${table} ORDER BY name_rus`);
+    res.json({ data: rows });
+  });
+
+  app.post(`/v1/${table}`, authRequired, requireRoles('admin','operator'), async (req, res) => {
+    const { name_rus, name_cyr, name_lat, name_eng } = req.body || {};
+    if (!name_rus) return res.status(400).json({ message: 'Название обязательно' });
+    const { rows } = await pool.query(
+      `INSERT INTO ${table} (name_rus, name_cyr, name_lat, name_eng)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [name_rus, name_cyr || name_rus, name_lat || name_rus, name_eng || name_rus]
+    );
+    res.status(201).json({ data: rows[0] });
+  });
+
+  app.patch(`/v1/${table}/:id`, authRequired, requireRoles('admin','operator'), async (req, res) => {
+    const { name_rus, name_cyr, name_lat, name_eng } = req.body || {};
+    const { rows } = await pool.query(
+      `UPDATE ${table} SET name_rus=COALESCE($1,name_rus),
+                            name_cyr=COALESCE($2,name_cyr),
+                            name_lat=COALESCE($3,name_lat),
+                            name_eng=COALESCE($4,name_eng)
+       WHERE id=$5 RETURNING *`,
+      [name_rus, name_cyr, name_lat, name_eng, req.params.id]
+    );
+    res.json({ data: rows[0] });
+  });
+
+  app.delete(`/v1/${table}/:id`, authRequired, requireRoles('admin'), async (req, res) => {
+    await pool.query(`DELETE FROM ${table} WHERE id = $1`, [req.params.id]);
+    res.json({ success: true });
+  });
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+async function listOrders(req, res) {
+  const isClient = req.user.role === 'client';
+  const params   = isClient ? [req.user.userId] : [];
+  const where    = isClient ? `WHERE client_id = $1` : '';
+  const { rows } = await pool.query(
+    `SELECT id FROM orders ${where} ORDER BY created_at DESC LIMIT 200`, params
+  );
+  const orders = await Promise.all(rows.map(r => loadOrderFull(r.id)));
+  res.json({ data: orders.filter(Boolean) });
+}
+
+app.get('/v1/orders/list', authRequired, listOrders);
+app.get('/v1/orders',      authRequired, listOrders);
+
+app.get('/v1/orders/stats', authRequired, async (req, res) => {
+  const active    = ['diagnosing','awaiting_approval','approved','in_repair','assigned','accepted','new'];
+  const completed = ['completed','issued','ready_for_pickup'];
+
+  const isClient = req.user.role === 'client';
+  const clientFilter = isClient ? `AND client_id = $2` : '';
+  const totalFilter  = isClient ? `WHERE client_id = $1` : '';
+  const totalParams  = isClient ? [req.user.userId] : [];
+  const activeParams = isClient ? [active,   req.user.userId] : [active];
+  const doneParams   = isClient ? [completed,req.user.userId] : [completed];
+
+  const [tot, act, don] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS c FROM orders ${totalFilter}`, totalParams),
+    pool.query(`SELECT COUNT(*)::int AS c FROM orders WHERE status = ANY($1) ${clientFilter}`, activeParams),
+    pool.query(`SELECT COUNT(*)::int AS c FROM orders WHERE status = ANY($1) ${clientFilter}`, doneParams),
+  ]);
+  res.json({ data: { total: tot.rows[0].c, in_repair: act.rows[0].c, completed_today: don.rows[0].c } });
+});
+
+app.get('/v1/orders/track/:token', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id FROM orders WHERE public_tracking_token = $1 OR id::text = $1 LIMIT 1`,
+    [req.params.token]
+  );
+  if (!rows[0]) return res.status(404).json({ message: 'Заказ не найден. Проверьте код.' });
+  res.json({ data: await loadOrderFull(rows[0].id) });
+});
+
+app.get('/v1/orders/:id', authRequired, async (req, res) => {
+  const order = await loadOrderFull(req.params.id);
+  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
+  if (req.user.role === 'client' && order.client?.id !== req.user.userId) {
+    return res.status(403).json({ message: 'Нет доступа' });
   }
   res.json({ data: order });
 });
 
-// Allowed status transitions
-app.get('/v1/orders/:id/allowed-transitions', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) {
-    return res.status(404).json({ message: 'Заказ не найден' });
-  }
-  
-  // Custom mock state machine transitions
-  let transitions = [];
-  if (order.status === 'new') transitions = ['accepted'];
-  else if (order.status === 'accepted') transitions = ['diagnosing'];
-  else if (order.status === 'diagnosing') transitions = ['awaiting_approval'];
-  else if (order.status === 'awaiting_approval') transitions = ['approved'];
-  else if (order.status === 'approved') transitions = ['in_repair'];
-  else if (order.status === 'in_repair') transitions = ['completed'];
-  
-  res.json({ transitions });
+app.get('/v1/orders/:id/allowed-transitions', authRequired, async (req, res) => {
+  const { rows } = await pool.query(`SELECT status FROM orders WHERE id = $1`, [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ message: 'Заказ не найден' });
+  const transitions = {
+    new: ['accepted','cancelled'],
+    accepted: ['diagnosing'],
+    diagnosing: ['awaiting_approval'],
+    awaiting_approval: ['approved','cancelled'],
+    approved: ['in_repair'],
+    in_repair: ['completed'],
+    completed: ['issued'],
+  };
+  res.json({ transitions: transitions[rows[0].status] || [] });
 });
 
-// Update order status
-app.patch('/v1/orders/:id', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) {
-    return res.status(404).json({ message: 'Заказ не найден' });
+app.post('/v1/orders', authRequired, async (req, res) => {
+  const details = req.body?.details;
+  if (!Array.isArray(details) || !details.length) return res.status(400).json({ message: 'Нет позиций' });
+
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const { rows: o } = await c.query(
+      `INSERT INTO orders (client_id, status) VALUES ($1, 'new') RETURNING id`,
+      [req.user.userId]
+    );
+    for (const d of details) {
+      await c.query(
+        `INSERT INTO order_details (order_id, equipment_id, issue_id, service_id, serial_number, notes)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [o[0].id, d.equipment_id || null, d.issue_id || null, d.service_id || null, d.serial_number || '', d.notes || null]
+      );
+    }
+    await c.query('COMMIT');
+    const newOrder = await loadOrderFull(o[0].id);
+    telegram.notifyNewOrder(newOrder).catch(() => {});
+    res.status(201).json({ data: newOrder });
+  } catch (err) {
+    await c.query('ROLLBACK').catch(()=>{});
+    console.error('create order:', err);
+    res.status(500).json({ message: 'Не удалось создать заказ' });
+  } finally {
+    c.release();
   }
-  const fromStatus = order.status;
-  order.status = req.body.status;
-  
-  // Telegram notifications
-  telegram.notifyStatusChange(order, fromStatus, req.body.status, currentUser?.full_name);
+});
+
+// Guest order (no auth)
+app.post('/v1/guest/orders', authOptional, async (req, res) => {
+  const { client_name, phone, telegram: tg, notes } = req.body || {};
+  // Accept either an array of details, or a single equipment_id/issue_id pair (legacy)
+  const rawDetails = Array.isArray(req.body?.details)
+    ? req.body.details
+    : (req.body?.equipment_id || req.body?.issue_id)
+      ? [{ equipment_id: req.body.equipment_id, issue_id: req.body.issue_id, notes }]
+      : [];
+
+  if (!client_name || !phone) return res.status(400).json({ message: 'Имя и телефон обязательны' });
+  if (!rawDetails.length)     return res.status(400).json({ message: 'Добавьте хотя бы одно устройство' });
+
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    // Find or create client
+    const found = await c.query(`SELECT id FROM users WHERE phone = $1 AND role='client' LIMIT 1`, [phone]);
+    let clientId = found.rows[0]?.id;
+    if (!clientId) {
+      const tempPassword = Math.random().toString(36).slice(-10);
+      const hash = await bcrypt.hash(tempPassword, 10);
+      const { rows: u } = await c.query(
+        `INSERT INTO users (login, password_hash, role, full_name, phone, telegram)
+         VALUES ($1,$2,'client',$3,$4,$5) RETURNING id`,
+        [phone, hash, client_name, phone, tg || null]
+      );
+      clientId = u[0].id;
+    } else if (tg) {
+      await c.query(`UPDATE users SET telegram = $1, full_name = $2 WHERE id = $3`, [tg, client_name, clientId]);
+    }
+
+    const { rows: o } = await c.query(
+      `INSERT INTO orders (client_id, guest_name, guest_phone, status)
+       VALUES ($1,$2,$3,'new') RETURNING id`,
+      [clientId, client_name, phone]
+    );
+    for (const d of rawDetails) {
+      await c.query(
+        `INSERT INTO order_details (order_id, equipment_id, issue_id, serial_number, notes)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [o[0].id, d.equipment_id || null, d.issue_id || null, d.serial_number || '', d.notes || null]
+      );
+    }
+    await c.query('COMMIT');
+
+    const newOrder = await loadOrderFull(o[0].id);
+    telegram.notifyGuestNewOrder(newOrder).catch(() => {});
+    res.status(201).json({ data: newOrder });
+  } catch (err) {
+    await c.query('ROLLBACK').catch(()=>{});
+    console.error('guest order:', err);
+    res.status(500).json({ message: 'Не удалось создать заявку' });
+  } finally {
+    c.release();
+  }
+});
+
+app.patch('/v1/orders/:id', authRequired, async (req, res) => {
+  const { status } = req.body || {};
+  if (!status) return res.status(400).json({ message: 'Status required' });
+
+  const before = await loadOrderFull(req.params.id);
+  if (!before) return res.status(404).json({ message: 'Заказ не найден' });
+
+  await pool.query(`UPDATE orders SET status = $1 WHERE id = $2`, [status, req.params.id]);
+  const order = await loadOrderFull(req.params.id);
+  const actor = await getUserById(req.user.userId);
+
+  telegram.notifyStatusChange(order, before.status, status, actor?.full_name).catch(()=>{});
   if (order.client?.telegram_chat_id) {
-    telegram.notifyClientStatusChange(order.client.telegram_chat_id, order, req.body.status);
+    telegram.notifyClientStatusChange(order.client.telegram_chat_id, order, status).catch(()=>{});
   }
-  if (req.body.status === 'completed') {
-    telegram.notifyOrderCompleted(order);
+  if (status === 'completed') {
+    telegram.notifyOrderCompleted(order).catch(()=>{});
     if (order.client?.telegram_chat_id) {
-      telegram.notifyClientOrderReady(order.client.telegram_chat_id, order);
+      telegram.notifyClientOrderReady(order.client.telegram_chat_id, order).catch(()=>{});
     }
   }
-  
   res.json({ data: order });
 });
 
-// Assign master to detail
-app.post('/v1/orders/:id/details/:detailId/assign', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
-  
-  const detail = order.details.find(d => d.id === req.params.detailId);
-  if (!detail) return res.status(404).json({ message: 'Услуга не найдена' });
-  
-  const master = users.find(u => u.id === req.body.master_id);
-  detail.attached_to = req.body.master_id;
-  detail.master = master || null;
-  
-  // Telegram notification
-  telegram.notifyMasterAssigned(order, master);
-  
+app.post('/v1/orders/:id/details/:detailId/assign', authRequired, requireRoles('admin','operator'), async (req, res) => {
+  await pool.query(`UPDATE order_details SET attached_to = $1 WHERE id = $2`, [req.body.master_id, req.params.detailId]);
+  const order  = await loadOrderFull(req.params.id);
+  const master = await getUserById(req.body.master_id);
+  telegram.notifyMasterAssigned(order, master).catch(()=>{});
   res.json({ data: order });
 });
 
-// Set / Update price
-const handleSetPrice = (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
-  
-  const { details } = req.body;
-  let total = 0;
-  
-  details.forEach((item) => {
-    const detail = order.details.find(d => d.id === item.detail_id);
-    if (detail) {
-      detail.price_uzs = Number(item.price);
-    }
-  });
-
-  order.details.forEach(d => {
-    total += d.price_uzs || 0;
-  });
-  order.total_price_uzs = total;
-  
-  // Telegram notifications
-  telegram.notifyPriceSet(order, total);
+const handleSetPrice = async (req, res) => {
+  const details = req.body?.details || [];
+  for (const item of details) {
+    await pool.query(`UPDATE order_details SET price_uzs = $1 WHERE id = $2`, [Number(item.price), item.detail_id]);
+  }
+  const { rows } = await pool.query(
+    `SELECT COALESCE(SUM(price_uzs),0)::numeric AS total FROM order_details WHERE order_id = $1`,
+    [req.params.id]
+  );
+  const total = Number(rows[0].total || 0);
+  await pool.query(
+    `UPDATE orders SET total_price_uzs = $1, status = CASE WHEN status IN ('diagnosing','new') THEN 'awaiting_approval' ELSE status END WHERE id = $2`,
+    [total, req.params.id]
+  );
+  const order = await loadOrderFull(req.params.id);
+  telegram.notifyPriceSet(order, total).catch(()=>{});
   if (order.client?.telegram_chat_id) {
-    telegram.notifyClientPriceSet(order.client.telegram_chat_id, order, total);
+    telegram.notifyClientPriceSet(order.client.telegram_chat_id, order, total).catch(()=>{});
   }
-  
   res.json({ data: order });
 };
 
-app.post('/v1/orders/:id/set-price', handleSetPrice);
-app.post('/v1/orders/:id/update-price', handleSetPrice);
+app.post('/v1/orders/:id/set-price',    authRequired, requireRoles('admin','operator','master'), handleSetPrice);
+app.post('/v1/orders/:id/update-price', authRequired, requireRoles('admin','operator','master'), handleSetPrice);
 
-// Client approve price
-app.post('/v1/orders/:id/approve-price', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
-  
-  order.price_approved_at = new Date().toISOString();
-  order.status = 'approved';
-  
-  // Telegram notification
-  telegram.notifyPriceApproved(order);
-  
-  res.json({ data: order });
-});
-
-// Client reject price
-app.post('/v1/orders/:id/reject-price', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
-  
-  order.price_rejected_at = new Date().toISOString();
-  order.status = 'cancelled';
-  
-  // Telegram notification
-  telegram.notifyPriceRejected(order, req.body.reason);
-  
-  res.json({ data: order });
-});
-
-// Close order
-app.post('/v1/orders/:id/close', (req, res) => {
-  const order = orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ message: 'Заказ не найден' });
-  
-  order.status = 'issued';
-  order.total_paid_uzs = order.total_price_uzs;
-  
-  // Telegram notification
-  telegram.notifyOrderIssued(order);
-  
-  res.json({ data: order });
-});
-
-// Track order by token
-app.get('/v1/orders/track/:token', (req, res) => {
-  const order = orders.find(o => o.id === req.params.token || o.id.toLowerCase() === req.params.token.toLowerCase());
-  if (!order) {
-    return res.status(404).json({ message: 'Заказ не найден. Проверьте код отслеживания.' });
+app.post('/v1/orders/:id/approve-price', authRequired, async (req, res) => {
+  // Admin/operator can approve on behalf of client
+  const allowedRoles = ['admin', 'operator', 'client'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Нет доступа' });
   }
-  res.json({ data: order });
-});
-
-// Guest order creation (no auth required)
-app.post('/v1/guest/orders', (req, res) => {
-  const { client_name, phone, telegram: clientTelegram, equipment_id, issue_id, notes } = req.body;
-  
-  if (!client_name || !phone) {
-    return res.status(400).json({ message: 'Имя и телефон обязательны' });
-  }
-  
-  // Find or create guest client
-  let guestClient = users.find(u => u.phone === phone && u.role === 'client');
-  if (!guestClient) {
-    guestClient = {
-      id: String(users.length + 1),
-      login: phone,
-      password: 'guest123',
-      role: 'client',
-      full_name: client_name || 'Гость',
-      phone: phone || '',
-      email: null,
-      telegram: clientTelegram || null,
-      telegram_chat_id: null
-    };
-    users.push(guestClient);
-  } else {
-    // Update name and telegram if provided
-    if (client_name) guestClient.full_name = client_name;
-    if (clientTelegram) guestClient.telegram = clientTelegram;
-  }
-  
-  const newOrder = {
-    id: 'ord' + (orders.length + 1),
-    order_date: new Date().toISOString(),
-    status: 'new',
-    price_approved_at: null,
-    price_rejected_at: null,
-    total_price_uzs: 0,
-    total_paid_uzs: 0,
-    client: guestClient,
-    guest_name: client_name,
-    guest_phone: phone,
-    details: [{
-      id: 'det_' + Date.now(),
-      serial_number: '',
-      equipment: equipments.find(e => e.id === equipment_id) || equipments[0],
-      issue: issues.find(i => i.id === issue_id) || issues[0],
-      notes: notes || '',
-      price_uzs: 0,
-      attached_to: null,
-      master: null
-    }]
-  };
-  orders.push(newOrder);
-  
-  // Telegram notification to admin group
-  telegram.notifyNewOrder(newOrder);
-  
-  // If client has telegram_chat_id, notify them directly
-  if (guestClient.telegram_chat_id) {
-    const shortId = newOrder.id.slice(0, 8).toUpperCase();
-    telegram.notifyClientStatusChange(guestClient.telegram_chat_id, newOrder, 'new');
-  }
-  
-  res.status(201).json({ data: newOrder });
-});
-
-// Client register
-app.post('/v1/auth/register', (req, res) => {
-  const { full_name, phone, email, password } = req.body;
-  
-  if (users.find(u => u.login === phone || u.login === email)) {
-    return res.status(409).json({ message: 'Пользователь с таким телефоном или email уже существует' });
-  }
-  
-  const newUser = {
-    id: String(users.length + 1),
-    login: email || phone,
-    password,
-    role: 'client',
-    full_name,
-    phone,
-    email: email || null,
-    telegram_chat_id: null
-  };
-  users.push(newUser);
-  
-  const { password: _, ...userWithoutPassword } = newUser;
-  res.status(201).json({ data: { user: userWithoutPassword, message: 'Регистрация успешна' } });
-});
-
-// Create order without auth (guest creates, gets assigned to first client)
-app.post('/v1/orders/guest', (req, res) => {
-  const { client_name, phone, equipment_id, issue_id, notes } = req.body;
-  
-  // Find or create guest client
-  let guestClient = users.find(u => u.phone === phone && u.role === 'client');
-  if (!guestClient) {
-    guestClient = {
-      id: String(users.length + 1),
-      login: phone,
-      password: 'guest123',
-      role: 'client',
-      full_name: client_name || 'Гость',
-      phone: phone || '',
-      email: null,
-      telegram_chat_id: null
-    };
-    users.push(guestClient);
-  }
-  
-  const newOrder = {
-    id: 'ord' + (orders.length + 1),
-    order_date: new Date().toISOString(),
-    status: 'new',
-    price_approved_at: null,
-    price_rejected_at: null,
-    total_price_uzs: 0,
-    total_paid_uzs: 0,
-    client: guestClient,
-    details: [{
-      id: 'det_' + Date.now(),
-      serial_number: '',
-      equipment: equipments.find(e => e.id === equipment_id) || equipments[0],
-      issue: issues.find(i => i.id === issue_id) || issues[0],
-      notes: notes || '',
-      price_uzs: 0,
-      attached_to: null,
-      master: null
-    }]
-  };
-  orders.push(newOrder);
-  res.status(201).json({ data: newOrder });
-});
-
-// Telegram webhook endpoint
-app.post('/v1/telegram/webhook', async (req, res) => {
-  const result = await telegram.handleWebhook(
-    req.body,
-    (orderId) => orders.find(o => o.id === orderId),
-    (clientId) => users.find(u => u.id === clientId),
-    (client) => { /* client already mutated in-memory */ }
+  await pool.query(
+    `UPDATE orders SET price_approved_at = NOW(), status = 'approved' WHERE id = $1`,
+    [req.params.id]
   );
-  res.json(result);
+  const order = await loadOrderFull(req.params.id);
+  telegram.notifyPriceApproved(order).catch(()=>{});
+  res.json({ data: order });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Mock backend server running on http://localhost:${PORT}`);
-  console.log(`📝 Test credentials:`);
-  console.log(`   Admin: admin@hdd-fixer.uz / admin123`);
-  console.log(`   Client: client@test.uz / client123`);
-  console.log(`   Operator: operator@test.uz / operator123`);
-  console.log(`\n🤖 Telegram bot: ${telegram.isConfigured() ? '✅ Configured' : '⚠️  Not configured (set TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID)'}`);
+app.post('/v1/orders/:id/reject-price', authRequired, async (req, res) => {
+  await pool.query(
+    `UPDATE orders SET price_rejected_at = NOW(), status = 'cancelled', rejection_reason = $1 WHERE id = $2`,
+    [req.body?.reason || null, req.params.id]
+  );
+  const order = await loadOrderFull(req.params.id);
+  telegram.notifyPriceRejected(order, req.body?.reason).catch(()=>{});
+  res.json({ data: order });
+});
+
+app.post('/v1/orders/:id/close', authRequired, requireRoles('admin','operator'), async (req, res) => {
+  await pool.query(
+    `UPDATE orders SET status = 'issued', closed_at = NOW(), total_paid_uzs = total_price_uzs WHERE id = $1`,
+    [req.params.id]
+  );
+  const order = await loadOrderFull(req.params.id);
+  telegram.notifyOrderIssued(order).catch(()=>{});
+  res.json({ data: order });
+});
+
+// Delete order (admin only) — for orders created by mistake
+app.delete('/v1/orders/:id', authRequired, requireRoles('admin'), async (req, res) => {
+  const { rows } = await pool.query(`SELECT id, status FROM orders WHERE id = $1`, [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ message: 'Заказ не найден' });
+
+  await pool.query(`DELETE FROM order_details WHERE order_id = $1`, [req.params.id]);
+  await pool.query(`DELETE FROM orders WHERE id = $1`, [req.params.id]);
+  res.json({ success: true, message: 'Заказ удалён' });
+});
+
+// ============================================================
+// TELEGRAM webhook
+// ============================================================
+
+app.post('/v1/telegram/webhook', async (req, res) => {
+  const findOrderById = async (orderId) => {
+    const { rows } = await pool.query(`SELECT id, client_id FROM orders WHERE id::text = $1 LIMIT 1`, [orderId]);
+    if (!rows[0]) return null;
+    return await loadOrderFull(rows[0].id);
+  };
+  const saveClientChatId = async (clientId, chatId, username) => {
+    await pool.query(
+      `UPDATE users SET telegram_chat_id = $1, telegram = COALESCE($2, telegram) WHERE id = $3`,
+      [chatId, username || null, clientId]
+    );
+  };
+
+  try {
+    if (req.body.message?.text?.startsWith('/start')) {
+      const m = req.body.message;
+      const chatId = String(m.chat.id);
+      const args = m.text.split(' ');
+      if (args.length > 1) {
+        const order = await findOrderById(args[1]);
+        if (order && order.client) {
+          await saveClientChatId(order.client.id, chatId, m.from?.username);
+          return res.json({
+            method: 'sendMessage',
+            chat_id: chatId,
+            text: `✅ <b>Успешно!</b>\n\nТеперь вы будете получать уведомления по заказу #${args[1].slice(0,8).toUpperCase()}.`,
+            parse_mode: 'HTML',
+          });
+        }
+      }
+      return res.json({
+        method: 'sendMessage',
+        chat_id: chatId,
+        text: '👋 Добро пожаловать в RECOVERY.UZ! Воспользуйтесь ссылкой со страницы заказа, чтобы получать уведомления.',
+        parse_mode: 'HTML',
+      });
+    }
+  } catch (err) {
+    console.error('telegram webhook:', err);
+  }
+  res.json({ ok: true });
+});
+
+// ============================================================
+// HEALTH + ERROR HANDLER + START
+// ============================================================
+
+app.get('/v1/health', async (_req, res) => {
+  try { await pool.query('SELECT 1'); res.json({ status: 'ok', db: 'connected' }); }
+  catch { res.status(500).json({ status: 'error', db: 'disconnected' }); }
+});
+
+app.use((err, _req, res, _next) => {
+  console.error('Unhandled:', err);
+  res.status(500).json({ message: 'Internal server error' });
+});
+
+app.listen(PORT, async () => {
+  console.log(`🚀 RECOVERY.UZ backend on http://localhost:${PORT}`);
+  console.log(`🗄  Database: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5436}/${process.env.DB_NAME || 'recovery_uz'}`);
+  console.log(`🤖 Telegram bot: ${telegram.isConfigured() ? '✅ Configured' : '⚠️  Not configured'}`);
+  try {
+    await pool.query('SELECT 1');
+    console.log('✅ Database connection OK');
+  } catch (err) {
+    console.error('❌ Cannot connect to DB:', err.message);
+  }
 });

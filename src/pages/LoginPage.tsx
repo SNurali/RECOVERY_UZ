@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useI18n } from '../i18n/provider';
 import { motion } from 'framer-motion';
 import {
-  Lock, Loader2, ArrowRight, Mail, Eye, EyeOff, HardDrive
+  Lock, Loader2, ArrowRight, Mail, Eye, EyeOff, HardDrive, ArrowLeft, Wrench, Search
 } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
@@ -70,6 +70,26 @@ export default function LoginPage() {
         <LanguageSwitcher />
       </div>
 
+      {/* Back to home */}
+      <button
+        onClick={() => navigate('/')}
+        aria-label={t('auth.backToHome')}
+        style={{
+          position: 'absolute', top: '1.5rem', left: '1.5rem', zIndex: 20,
+          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.55rem 0.9rem', borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(12px)',
+          color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(15,23,42,0.85)'; e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(15,23,42,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+      >
+        <ArrowLeft size={16} />
+        {t('auth.backToHome')}
+      </button>
+
       {/* Left side - Branding */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '3rem', position: 'relative' }}>
         <motion.div
@@ -129,7 +149,7 @@ export default function LoginPage() {
               {t('auth.loginButton')}
             </h2>
             <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '2rem' }}>
-              Введите данные для входа в систему
+              {t('auth.subtitle')}
             </p>
 
             {error && (
@@ -214,15 +234,46 @@ export default function LoginPage() {
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0' }}>
               <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-              <span style={{ fontSize: '0.8rem', color: '#475569' }}>или</span>
+              <span style={{ fontSize: '0.8rem', color: '#475569' }}>{t('auth.or')}</span>
               <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
             </div>
 
+            {/* Lazy / no-auth CTA — like the old project */}
+            <button
+              type="button"
+              onClick={() => navigate('/guest/new-order')}
+              style={{
+                width: '100%', padding: '0.95rem 1rem', borderRadius: '14px',
+                border: '1px solid rgba(16,185,129,0.35)',
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(20,184,166,0.18))',
+                color: '#a7f3d0', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                transition: 'transform 0.15s, box-shadow 0.15s, background 0.2s',
+                boxShadow: '0 10px 25px rgba(16,185,129,0.12)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.28), rgba(20,184,166,0.28))';
+                e.currentTarget.style.boxShadow = '0 15px 30px rgba(16,185,129,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(20,184,166,0.18))';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(16,185,129,0.12)';
+              }}
+            >
+              <Wrench size={18} />
+              {t('auth.guestOrder')}
+            </button>
+            <p style={{ color: '#64748b', fontSize: '0.78rem', margin: '0.55rem 0 0', textAlign: 'center', lineHeight: 1.45 }}>
+              {t('auth.guestOrderHint')}
+            </p>
+
             {/* Secondary actions */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1.25rem' }}>
               <button
                 onClick={() => navigate('/register')}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#cbd5e1', fontSize: '0.88rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
               >
@@ -231,11 +282,12 @@ export default function LoginPage() {
 
               <button
                 onClick={() => navigate('/track')}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+                style={{ width: '100%', padding: '0.7rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
               >
-                🔍 Отследить заказ без входа
+                <Search size={15} />
+                {t('auth.trackWithoutLogin')}
               </button>
             </div>
           </div>

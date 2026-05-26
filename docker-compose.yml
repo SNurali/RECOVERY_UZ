@@ -1,52 +1,46 @@
-version: '3.8'
-
+# Production stack: postgres + backend (server.js) + nginx-served frontend.
+# Same schema and code as local — only env differs.
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: recovery_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: recovery_uz
-      POSTGRES_USER: recovery_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-recovery_secure_pass_2026}
+      POSTGRES_DB:       ${DB_NAME:-recovery_uz}
+      POSTGRES_USER:     ${DB_USER:-recovery_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    networks:
-      - recovery_network
+      - recovery_pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    networks: [recovery_net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U recovery_admin -d recovery_uz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-recovery_admin} -d ${DB_NAME:-recovery_uz}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-  # Backend API
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: recovery_backend
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3004
-      DATABASE_URL: postgresql://recovery_admin:${DB_PASSWORD:-recovery_secure_pass_2026}@postgres:5432/recovery_uz
-      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
-    ports:
-      - "3004:3004"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER:     ${DB_USER:-recovery_admin}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME:     ${DB_NAME:-recovery_uz}
+      JWT_SECRET:  ${JWT_SECRET}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID:   ${TELEGRAM_CHAT_ID}
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - recovery_network
-    volumes:
-      - ./backend/logs:/app/logs
+    networks: [recovery_net]
 
-  # Frontend
   frontend:
     build:
       context: .
@@ -57,15 +51,11 @@ services:
       - "80:80"
     depends_on:
       - backend
-    networks:
-      - recovery_network
-    environment:
-      VITE_API_URL: http://backend:3004/v1
+    networks: [recovery_net]
 
 networks:
-  recovery_network:
+  recovery_net:
     driver: bridge
 
 volumes:
-  postgres_data:
-    driver: local
+  recovery_pgdata:

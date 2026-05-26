@@ -1,145 +1,99 @@
-# 🚀 RECOVERY.UZ — Инструкция по деплою
+# RECOVERY.UZ — Deploy Guide
 
-## Сервер
-- **IP:** 195.158.24.137
-- **Домен:** hddfix.uz
-- **GitHub:** https://github.com/SNurali/RECOVERY_UZ
+Single source of truth: same `server.js` and `init.sql` run locally and in production.
+The only difference is environment variables.
 
 ---
 
-## Быстрый деплой на сервер
-
-### 1. Подключиться к серверу
-```bash
-ssh yoyo@195.158.24.137
-```
-
-### 2. Клонировать новый проект
-```bash
-cd /home/yoyo
-git clone https://github.com/SNurali/RECOVERY_UZ.git
-cd RECOVERY_UZ
-```
-
-### 3. Установить зависимости
-```bash
-npm install --production
-```
-
-### 4. Создать .env файл
-```bash
-cat > .env << 'EOF'
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=8759863943:AAHncy4_UyPHiidyTTLp5e2F9bFJCRTYqfI
-TELEGRAM_CHAT_ID=-1003765182373
-
-# API
-VITE_API_URL=http://hddfix.uz:3004/v1
-NODE_ENV=production
-EOF
-```
-
-### 5. Собрать фронтенд
-```bash
-npm run build
-```
-
-### 6. Запустить сервер (PM2)
-```bash
-# Установить PM2 если нет
-npm install -g pm2
-
-# Запустить бэкенд
-pm2 start server.js --name recovery-api
-
-# Раздать фронтенд через nginx или serve
-npm install -g serve
-pm2 start "serve -s dist -l 3003" --name recovery-web
-
-# Сохранить конфигурацию PM2
-pm2 save
-pm2 startup
-```
-
-### 7. Настроить Nginx (если нужно)
-```nginx
-# /etc/nginx/sites-available/recovery-uz
-server {
-    listen 80;
-    server_name hddfix.uz;
-
-    # Frontend
-    location / {
-        proxy_pass http://localhost:3003;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # API
-    location /v1/ {
-        proxy_pass http://localhost:3004/v1/;
-        proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $host;
-    }
-}
-```
+## Local development
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/recovery-uz /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+# 1. Start local Postgres in Docker
+npm run db:up
+
+# 2. Seed test users + catalog (idempotent)
+npm run db:seed
+
+# 3. Run backend + frontend
+npm run server      # → http://localhost:3004
+npm run dev         # → http://localhost:5173
+```
+
+Test credentials (all created by seed):
+
+| Role     | Login               | Password    |
+|----------|---------------------|-------------|
+| admin    | admin@hdd-fixer.uz  | admin123    |
+| operator | operator@test.uz    | operator123 |
+| master   | master1@test.uz     | master123   |
+| client   | client@test.uz      | client123   |
+
+Useful commands:
+
+```bash
+npm run db:psql     # open psql shell
+npm run db:logs     # tail postgres logs
+npm run db:down     # stop the local db (data persisted in volume)
 ```
 
 ---
 
-## Обновление
+## Production deploy (server: 172.16.252.32)
+
+### One-time setup
+
+On the server:
 
 ```bash
 cd /home/yoyo/RECOVERY_UZ
-git pull origin main
-npm install --production
-npm run build
-pm2 restart all
+cp .env.example .env
+$EDITOR .env       # set DB_PASSWORD, JWT_SECRET, TELEGRAM_*
+
+# Build and start the whole stack
+docker compose up -d --build
+
+# Seed test data (only first time)
+docker compose exec backend node backend/seed.js
 ```
 
----
+The stack contains:
 
-## Порты
+- `postgres` — Postgres 16 with `init.sql` auto-applied on first boot
+- `backend`  — node `server.js` (same file as local) on port 3004 inside the network
+- `frontend` — nginx serving the Vite build, proxying `/v1` → `backend:3004`
 
-| Сервис | Порт |
-|--------|------|
-| Frontend (Vite build / serve) | 3003 |
-| Backend API (server.js) | 3004 |
+Frontend listens on host port 80. Behind your existing nginx (TLS termination,
+hddfix.uz) just proxy to `127.0.0.1:80`.
 
----
-
-## Проверка
+### Update workflow
 
 ```bash
-# API
-curl http://localhost:3004/v1/orders/stats
+cd /home/yoyo/RECOVERY_UZ
+git pull
+docker compose up -d --build       # rebuilds backend & frontend, restarts postgres only if image changed
+```
 
-# Frontend
-curl http://localhost:3003
+The frontend build picks up `.env.production` automatically (`VITE_API_URL=/v1`),
+so it always talks to the same origin, eliminating cache/CORS surprises.
 
-# Telegram test
-curl -X POST http://localhost:3004/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"login":"admin@hdd-fixer.uz","password":"admin123"}'
+### Diagnostics
+
+```bash
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose exec postgres psql -U recovery_admin -d recovery_uz -c '\dt'
+curl -s http://localhost/v1/health
 ```
 
 ---
 
-## Тестовые учётные данные
+## Sanity check: local vs prod parity
 
-| Роль | Логин | Пароль |
-|------|-------|--------|
-| Админ | admin@hdd-fixer.uz | admin123 |
-| Клиент | client@test.uz | client123 |
-| Оператор | operator@test.uz | operator123 |
-| Мастер | master1@test.uz | master123 |
+The point of this setup is identical behaviour. To confirm:
+
+1. Locally: `npm run db:up && npm run db:seed && npm run server` → `curl http://localhost:3004/v1/health`
+2. On server: `docker compose up -d --build` → `curl http://localhost/v1/health`
+
+Both should return `{"status":"ok","db":"connected"}`. Login with the same
+credentials returns identical JSON shape, so the frontend behaves the same.

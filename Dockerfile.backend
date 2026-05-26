@@ -1,0 +1,15 @@
+# Unified backend image (uses root server.js + backend/* helpers).
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
+COPY server.js ./
+COPY backend ./backend
+
+ENV NODE_ENV=production
+EXPOSE 3004
+
+CMD ["node", "server.js"]
