@@ -74,10 +74,15 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const HomePage = () => {
-  const { isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   
   if (isLoading) {
     return <PageLoader />;
+  }
+
+  if (user) {
+    if (user.role === 'client') return <Navigate to="/client" replace />;
+    return <Navigate to="/staff" replace />;
   }
 
   return <Suspense fallback={<PageLoader />}><GuestView /></Suspense>;
