@@ -13,6 +13,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as telegram from './backend/src/telegram/bot.js';
@@ -664,6 +666,31 @@ app.post('/v1/telegram/webhook', async (req, res) => {
 app.get('/v1/health', async (_req, res) => {
   try { await pool.query('SELECT 1'); res.json({ status: 'ok', db: 'connected' }); }
   catch { res.status(500).json({ status: 'error', db: 'disconnected' }); }
+});
+
+// ============================================================
+// STATIC FILES + SPA FALLBACK (production: serves dist/)
+// ============================================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, 'dist');
+
+// Serve static assets with long cache (hashed filenames)
+app.use('/assets', express.static(path.join(distPath, 'assets'), {
+  maxAge: '1y',
+  immutable: true,
+}));
+
+// Serve other static files (favicon, icons, etc.)
+app.use(express.static(distPath, {
+  index: false, // Don't auto-serve index.html for /
+  maxAge: '1h',
+}));
+
+// SPA fallback: any non-API route serves index.html
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 app.use((err, _req, res, _next) => {
