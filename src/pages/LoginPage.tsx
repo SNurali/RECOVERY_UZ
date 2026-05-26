@@ -4,9 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useI18n } from '../i18n/provider';
 import { motion } from 'framer-motion';
 import {
-  Lock, Loader2, ArrowRight, Mail, Eye, EyeOff, HardDrive, ArrowLeft, Wrench, Search
+  Lock, Loader2, ArrowRight, Mail, Eye, EyeOff, ArrowLeft, Wrench, Search
 } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import AnimatedLogo from '../components/AnimatedLogo';
 
 export default function LoginPage() {
   const [loginForm, setLoginForm] = useState('');
@@ -100,12 +101,10 @@ export default function LoginPage() {
         >
           {/* Logo */}
           <div style={{ marginBottom: '2rem' }}>
-            <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 20px 40px rgba(14,165,233,0.3)' }}>
-              <HardDrive size={40} color="white" />
-            </div>
+            <AnimatedLogo size={104} showText={false} />
           </div>
 
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.75rem', background: 'linear-gradient(135deg, #f8fafc, #cbd5e1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h1 style={{ fontSize: '2.7rem', fontWeight: 950, letterSpacing: '-0.055em', marginBottom: '0.75rem', background: 'linear-gradient(135deg, #ffffff 0%, #7dd3fc 52%, #c4b5fd 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             RECOVERY.UZ
           </h1>
           <p style={{ fontSize: '1.1rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem' }}>

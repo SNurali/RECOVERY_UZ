@@ -16,6 +16,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 // Staff pages - lazy load
 const StaffDashboard = lazy(() => import('./pages/staff/Dashboard'));
 const StaffOrders = lazy(() => import('./pages/staff/Orders'));
+const StaffNewOrder = lazy(() => import('./pages/staff/NewOrder'));
 const StaffOrderDetail = lazy(() => import('./pages/staff/OrderDetail'));
 const Catalog = lazy(() => import('./pages/staff/Catalog'));
 const Clients = lazy(() => import('./pages/staff/Clients'));
@@ -120,6 +121,7 @@ const AppRoutes = () => {
       >
         <Route index element={<StaffDashboard />} />
         <Route path="orders" element={<StaffOrders />} />
+        <Route path="orders/new" element={<StaffNewOrder />} />
         <Route path="orders/:id" element={<StaffOrderDetail />} />
         <Route path="clients" element={<Clients />} />
         <Route path="catalog" element={<Catalog />} />

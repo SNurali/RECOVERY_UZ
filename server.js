@@ -425,12 +425,18 @@ app.post('/v1/orders', authRequired, async (req, res) => {
   const details = req.body?.details;
   if (!Array.isArray(details) || !details.length) return res.status(400).json({ message: 'Нет позиций' });
 
+  // Staff (admin/operator) can create orders on behalf of a client
+  let clientId = req.user.userId;
+  if (req.body.client_id && ['admin', 'operator'].includes(req.user.role)) {
+    clientId = req.body.client_id;
+  }
+
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
     const { rows: o } = await c.query(
       `INSERT INTO orders (client_id, status) VALUES ($1, 'new') RETURNING id`,
-      [req.user.userId]
+      [clientId]
     );
     for (const d of details) {
       await c.query(

@@ -91,7 +91,7 @@ export default function StaffOrders() {
           <h1 className="page-title">Заказы</h1>
           <p className="page-description">Управление заказами (Excel-вид)</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/staff/orders/new')}>
           Создать заказ
         </button>
       </div>
