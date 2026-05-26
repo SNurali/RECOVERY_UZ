@@ -27,15 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      const savedUser = localStorage.getItem('auth_user');
-      if (savedUser) {
-        try {
-          setUser(JSON.parse(savedUser));
-        } catch (e) {
-          localStorage.removeItem('auth_user');
-        }
-      }
-
       try {
         const { data } = await api.get('/users/me');
         const userData = {
@@ -50,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         setUser(null);
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_token');
       } finally {
         setIsLoading(false);
       }
