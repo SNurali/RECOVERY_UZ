@@ -71,7 +71,6 @@ export default function GuestOrderPage() {
   const getIssueName     = (id: string) => getName(issues.find(i => i.id === id));
 
   const draftEquipment = useMemo(() => equipments.find(e => e.id === draft.equipment_id), [equipments, draft.equipment_id]);
-  const draftIssue     = useMemo(() => issues.find(i => i.id === draft.issue_id),         [issues, draft.issue_id]);
 
   const canGoNext = () => {
     if (step === 0) return !!draft.equipment_id;
