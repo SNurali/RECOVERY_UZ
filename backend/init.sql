@@ -54,8 +54,11 @@ CREATE TABLE IF NOT EXISTS services (
 );
 
 -- ----------------------- ORDERS -----------------------
+CREATE SEQUENCE IF NOT EXISTS orders_order_number_seq START WITH 1;
+
 CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_number           INTEGER UNIQUE DEFAULT nextval('orders_order_number_seq'),
     client_id UUID REFERENCES users(id) ON DELETE SET NULL,
     guest_name             VARCHAR(255),
     guest_phone            VARCHAR(50),

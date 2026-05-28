@@ -38,9 +38,9 @@ export default function StaffOrders() {
 
   const columns = [
     { 
-      key: 'id', 
+      key: 'order_number', 
       title: 'ID', 
-      render: (item: any) => <span className="font-bold">#{item.id.slice(0, 6).toUpperCase()}</span> 
+      render: (item: any) => <span className="font-bold" style={{ fontFamily: 'monospace' }}>{item.order_number ? String(item.order_number).padStart(7, '0') : '#' + item.id.slice(0, 6).toUpperCase()}</span> 
     },
     { 
       key: 'order_date', 

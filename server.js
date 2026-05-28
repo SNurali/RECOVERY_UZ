@@ -95,6 +95,7 @@ async function getUserById(userId) {
 async function loadOrderFull(orderId) {
   const orderResult = await pool.query(
     `SELECT o.*,
+            o.order_number,
             u.full_name        AS client_full_name,
             u.phone            AS client_phone,
             u.email            AS client_email,
@@ -126,6 +127,7 @@ async function loadOrderFull(orderId) {
 
   return {
     id: order.id,
+    order_number: order.order_number,
     order_date: order.created_at,
     status: order.status,
     price_approved_at: order.price_approved_at,
@@ -183,6 +185,21 @@ app.post('/v1/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok)   return res.status(401).json({ message: 'Неверный логин или пароль' });
 
+    // Link guest orders by phone number to this user's account
+    if (user.phone) {
+      await pool.query(
+        `UPDATE orders SET client_id = $1 WHERE guest_phone = $2 AND client_id IS NULL`,
+        [user.id, user.phone]
+      );
+      // Also link orders where client was auto-created with same phone but different user id
+      await pool.query(
+        `UPDATE orders SET client_id = $1 
+         WHERE client_id IN (SELECT id FROM users WHERE phone = $2 AND id != $1)
+           AND client_id != $1`,
+        [user.id, user.phone]
+      );
+    }
+
     const { password_hash, ...userData } = user;
     res.json({ data: { user: userData, token: signToken(user) } });
   } catch (err) {
@@ -210,7 +227,22 @@ app.post('/v1/auth/register', async (req, res) => {
        RETURNING id, full_name, email, phone, role`,
       [email || phone, hash, full_name, phone, email || null]
     );
-    res.status(201).json({ data: { user: rows[0], token: signToken(rows[0]), message: 'Регистрация успешна' } });
+
+    const newUser = rows[0];
+
+    // Link guest orders by phone number to this new account
+    await pool.query(
+      `UPDATE orders SET client_id = $1 WHERE guest_phone = $2 AND client_id IS NULL`,
+      [newUser.id, phone]
+    );
+    // Also link orders where a temp client was auto-created with same phone
+    await pool.query(
+      `UPDATE orders SET client_id = $1 
+       WHERE client_id IN (SELECT id FROM users WHERE phone = $2 AND id != $1)`,
+      [newUser.id, phone]
+    );
+
+    res.status(201).json({ data: { user: newUser, token: signToken(newUser), message: 'Регистрация успешна' } });
   } catch (err) {
     console.error('register:', err);
     res.status(500).json({ message: 'Ошибка регистрации' });
@@ -383,7 +415,7 @@ async function listOrders(req, res) {
   const params   = isClient ? [req.user.userId] : [];
   const where    = isClient ? `WHERE client_id = $1` : '';
   const { rows } = await pool.query(
-    `SELECT id FROM orders ${where} ORDER BY created_at DESC LIMIT 200`, params
+    `SELECT id FROM orders ${where} ORDER BY order_number DESC NULLS LAST, created_at DESC LIMIT 200`, params
   );
   const orders = await Promise.all(rows.map(r => loadOrderFull(r.id)));
   res.json({ data: orders.filter(Boolean) });

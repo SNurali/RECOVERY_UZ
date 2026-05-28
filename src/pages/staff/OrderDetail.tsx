@@ -143,7 +143,7 @@ export default function StaffOrderDetail() {
         </button>
         <div>
           <h1 className="text-2xl font-bold" style={{ margin: 0 }}>
-            Заказ #{order.id.slice(0, 8).toUpperCase()}
+            Заказ #{order.order_number ? String(order.order_number).padStart(7, '0') : order.id.slice(0, 8).toUpperCase()}
           </h1>
           <div className="text-sm text-secondary">
             Создан: {new Date(order.order_date).toLocaleString()}
