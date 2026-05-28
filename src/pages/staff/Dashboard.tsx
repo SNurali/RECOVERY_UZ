@@ -58,6 +58,7 @@ export default function StaffDashboard() {
   const [allowedTransitions, setAllowedTransitions] = useState<string[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [updating, setUpdating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { t } = useI18n();
   const { user } = useAuth();
 
@@ -102,6 +103,7 @@ export default function StaffDashboard() {
     setSelectedOrder(null);
     setAllowedTransitions([]);
     setPrices({});
+    setConfirmDelete(false);
   };
 
   const refreshOrder = async (orderId: string) => {
@@ -128,11 +130,10 @@ export default function StaffDashboard() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedOrder) return;
-    if (!confirm(`Перевести заказ в статус «${getStatusLabel(newStatus)}»?`)) return;
     setUpdating(true);
     try {
       await api.patch(`/orders/${selectedOrder.id}`, { status: newStatus });
-      toast.success('Статус обновлён');
+      toast.success(`Статус изменён на «${getStatusLabel(newStatus)}»`);
       await refreshOrder(selectedOrder.id);
       await fetchData();
     } catch (err) {
@@ -180,7 +181,6 @@ export default function StaffDashboard() {
 
   const handleApprovePrice = async () => {
     if (!selectedOrder) return;
-    if (!confirm('Одобрить цену за клиента?')) return;
     setUpdating(true);
     try {
       await api.post(`/orders/${selectedOrder.id}/approve-price`);
@@ -196,7 +196,6 @@ export default function StaffDashboard() {
 
   const handleCloseOrder = async () => {
     if (!selectedOrder) return;
-    if (!confirm('Выдать прибор и закрыть заказ?')) return;
     setUpdating(true);
     try {
       await api.post(`/orders/${selectedOrder.id}/close`);
@@ -212,8 +211,12 @@ export default function StaffDashboard() {
 
   const handleDeleteOrder = async () => {
     if (!selectedOrder) return;
-    if (!confirm(`Удалить заказ #${formatOrderNumber(selectedOrder.order_number)}? Это нельзя отменить.`)) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     setUpdating(true);
+    setConfirmDelete(false);
     try {
       await api.delete(`/orders/${selectedOrder.id}`);
       toast.success('Заказ удалён');
@@ -403,9 +406,16 @@ export default function StaffDashboard() {
                     </div>
 
                     {user?.role === 'admin' && (
-                      <button onClick={handleDeleteOrder} disabled={updating} className="btn" style={{ marginTop: '0.75rem', backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
-                        <Trash2 size={14} /> Удалить заказ
-                      </button>
+                      <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button onClick={handleDeleteOrder} disabled={updating} className="btn" style={{ backgroundColor: confirmDelete ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
+                          <Trash2 size={14} /> {confirmDelete ? 'Подтвердить удаление' : 'Удалить заказ'}
+                        </button>
+                        {confirmDelete && (
+                          <button onClick={() => setConfirmDelete(false)} className="btn" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                            Отмена
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
